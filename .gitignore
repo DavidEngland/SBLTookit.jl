@@ -1,0 +1,24 @@
+# Julia artifacts
+/Manifest.toml
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+
+# Processing Outputs & Raw Data
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# JLD2 / HDF5 / NetCDF binaries
+*.jld2
+*.nc
+*.nc4
+*.h5
+
+# OS & Editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
