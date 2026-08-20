@@ -1,3 +1,7 @@
+#!/usr/bin/env julia
+# SBLToolkit.jl - Single campaign processing script
+# scripts/process_campaign.jl
+# Command-line interface for processing a single campaign dataset
 using Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
 

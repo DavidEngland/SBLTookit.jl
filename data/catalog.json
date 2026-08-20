@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "catalog": {
+    "name": "SpectralBL-Analytics Dataset Catalog",
+    "catalog_version": "2026-08-20",
+    "last_updated_utc": "2026-08-20T10:15:00Z",
+    "description": "Catalog of boundary layer meteorological field campaigns, SCM benchmarks, and diagnostic assets for GeoABL.jl.",
+    "status_definitions": {
+      "Ingested": "Dataset fully processed into GeoABL.jl AtmosphericColumnDataset format.",
+      "Potential Future Use": "Candidate observational campaign queued for schema mapping and ingestion."
+    },
+    "notes": [
+      "GABLS3 serves as the core nocturnal boundary layer baseline.",
+      "CASES-99 target dataset for verifying precursor lead time (dt_fold).",
+      "SHEBA provides multi-level polar pack ice boundary layer profiles and surface roughness estimations."
+    ]
+  },
+  "datasets": [
+    {
+      "id": "gabls3_cabauw_scm",
+      "name": "GABLS3 Cabauw 200m Tower Benchmark",
+      "status": "Ingested",
+      "priority": "core",
+      "location": {
+        "region": "Utrecht",
+        "country": "Netherlands",
+        "specific_site": "Cabauw Meteorological Observatory (51.971°N, 4.927°E)"
+      },
+      "framework_role": {
+        "archetype": "Nocturnal Boundary Layer",
+        "structural_purpose": "Single-Column Model benchmark for low-level jet formation and inversion strength.",
+        "associated_metrics": [
+          "inversion_strength",
+          "peak_speed",
+          "peak_height",
+          "centered_rmsd"
+        ]
+      },
+      "site_description": {
+        "terrain": "Flat grassland",
+        "surface_type": "Short grass / moist soil",
+        "details": "200-meter mast providing continuous profiles of wind speed, direction, potential temperature, and specific humidity."
+      },
+      "meteorological_conditions": {
+        "key_features": "Strong Nocturnal Low-Level Jet, radiative surface cooling",
+        "stability_regime": "Stable to weakly convective transition",
+        "transition_dynamics": "Rapid evening boundary layer collapse followed by persistent nocturnal jet formation"
+      },
+      "data_assets": {
+        "trajectory_csv": "data/gabls3/trajectories/gabls3_state_trajectory.csv",
+        "shape_energy_csv": "data/gabls3/diagnostics/gabls3_shape_energy.csv",
+        "ingestion_source": "data/gabls3/gabls3_scm_cabauw_obs_v33.nc"
+      },
+      "literature_context": {
+        "primary_papers": [
+          "Baas et al. (2010) - Unraveling the Atmospheric Boundary Layer",
+          "Bosveld et al. (2014) - The Third GABLS Model Intercomparison"
+        ],
+        "notes": "Standardized 24-hour baseline starting 12:00 UTC July 1, 2006."
+      }
+    },
+    {
+      "id": "cases99_leon_tower",
+      "name": "CASES-99 Nocturnal Boundary Layer Campaign",
+      "status": "Ingested",
+      "priority": "candidate",
+      "location": {
+        "region": "Kansas",
+        "country": "United States",
+        "specific_site": "Leon 60m Meteorological Tower (37.648°N, 96.736°W)"
+      },
+      "framework_role": {
+        "archetype": "Stable Boundary Layer Collapse",
+        "structural_purpose": "Validation of fold precursor lead time (dt_fold) prior to nocturnal collapse events.",
+        "associated_metrics": [
+          "d_fold",
+          "T_align",
+          "u_star_gspt",
+          "rmse_H"
+        ]
+      },
+      "site_description": {
+        "terrain": "Flat prairie grassland",
+        "surface_type": "Prairie vegetation",
+        "details": "Main 60m tower equipped with high-frequency sonic anemometers and thermocouples across 8 vertical levels."
+      },
+      "meteorological_conditions": {
+        "key_features": "Intermittent turbulence, strong shear, nocturnal temperature inversions",
+        "stability_regime": "Very stable nocturnal boundary layer",
+        "transition_dynamics": "Evening transition driven by rapid decay of surface heat flux"
+      },
+      "data_assets": {
+        "trajectory_csv": "data/cases99/trajectories/cases99_state_trajectory.csv",
+        "shape_energy_csv": "data/cases99/diagnostics/cases99_shape_energy.csv",
+        "ingestion_source": "data/cases99/cases99_tower_obs.nc"
+      },
+      "literature_context": {
+        "primary_papers": [
+          "Poulos et al. (2002) - CASES-99 Field Experiment Overview",
+          "Sun et al. (2002) - Physical Processes in the Stable Boundary Layer"
+        ],
+        "notes": "Focused on October 1999 nighttime intensive observation periods (IOPs)."
+      }
+    },
+    {
+      "id": "sheba_met_city",
+      "name": "SHEBA Atmospheric Surface Flux Group (Met City)",
+      "status": "Ingested",
+      "priority": "core",
+      "location": {
+        "region": "Beaufort Sea",
+        "country": "Arctic Ocean",
+        "specific_site": "Ice Station SHEBA Met City Mast (75°N–80°N drift)"
+      },
+      "framework_role": {
+        "archetype": "Polar Sea Ice Boundary Layer",
+        "structural_purpose": "Primary benchmark for perennial sea-ice momentum exchange, dynamic roughness estimation (z0m, z0h, z0q), and radiative cooling budgets.",
+        "associated_metrics": [
+          "eta_3",
+          "ri_g_profile",
+          "z0m_log_profile",
+          "z0h_z0q_roughness",
+          "shape_energy"
+        ]
+      },
+      "site_description": {
+        "terrain": "Multi-year sea ice pack",
+        "surface_type": "Snow and ice",
+        "details": "5-level tower (z1–z5) measuring wind speed, temperature, humidity, 3D sonic turbulence, and surface radiative fluxes."
+      },
+      "meteorological_conditions": {
+        "key_features": "Strong persistent winter inversions, Arctic air-ice-sea coupling, low moisture flux",
+        "stability_regime": "Very stable to weakly convective transition",
+        "transition_dynamics": "Seasonal drift transitions from October 1997 through October 1998"
+      },
+      "data_assets": {
+        "trajectory_csv": "data/sheba/trajectories/sheba_state_trajectory.csv",
+        "shape_energy_csv": "data/sheba/diagnostics/sheba_shape_energy.csv",
+        "ingestion_source": "NCAR/EOL Dataset 13.114 (https://doi.org/10.5065/D65H7DNS); prof_file_all6_ed_hd.txt & main_file6_hd.txt -> prof_file_all6.nc & main_file6.nc via scripts/SHEBAprof2nc.jl"
+      },
+      "literature_context": {
+        "primary_papers": [
+          "Andreas et al. (1999) - An Overview of the SHEBA Atmospheric Flux Program",
+          "Persson et al. (2002) - Measurements Near the Atmospheric Surface Flux Group Tower at SHEBA"
+        ],
+        "notes": "Citation: Andreas, E., et al. 2007. Tower, 5-level hourly measurements plus radiometer and surface data at Met City (ASFG). NSF NCAR EOL. https://doi.org/10.5065/D65H7DNS. Ingested using scripts/SHEBAprof2nc.jl; roughness calculated with Buck (1981) ice saturation thermodynamics."
+      }
+    }
+  ]
+}
