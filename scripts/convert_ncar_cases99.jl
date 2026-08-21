@@ -4,10 +4,11 @@
 using NCDatasets
 using CSV
 using Dates
+using Logging
 
 const DEFAULT_Q = 0.005
-const P0 = 100000.0
-const R_OVER_CP = 0.286
+const P0 = 100_000.0
+const R_OVER_CP = 0.2854
 
 const TIME_ALIASES = ("time", "Time", "t", "TIME")
 const HEIGHT_ALIASES = ("height", "z", "Z", "level", "ht")
@@ -36,7 +37,7 @@ end
 function _resolve_var_name(
     ds::NCDataset,
     aliases::Tuple{Vararg{String}};
-    required::Bool = true,
+    required::Bool=true,
 )
     for name in aliases
         if haskey(ds, name)
@@ -94,7 +95,7 @@ function _parse_time_units(units::AbstractString)
     parsed === nothing && return nothing
     scale === nothing && return nothing
 
-    return (scale = scale, origin = datetime2unix(parsed))
+    return (scale=scale, origin=datetime2unix(parsed))
 end
 
 function _read_time_seconds(ds::NCDataset, time_name::String)
@@ -213,7 +214,7 @@ function _build_rows_from_wide_schema!(
     v_map = _extract_height_suffix_vars(ds, ["V", "v"])
     q_map = _extract_height_suffix_vars(ds, ["q", "qv"])
 
-    p_name = _resolve_var_name(ds, PRESSURE_ALIASES; required = false)
+    p_name = _resolve_var_name(ds, PRESSURE_ALIASES; required=false)
     p_series =
         p_name === nothing ? fill(P0, nt) :
         _extract_time_series(ds, p_name, nt, station_index)
@@ -242,7 +243,10 @@ function _build_rows_from_wide_schema!(
             q_name === nothing ? fill(DEFAULT_Q, nt) :
             _extract_time_series(ds, q_name, nt, station_index)
 
-        theta_series = temp_series .* (P0 ./ p_series) .^ R_OVER_CP
+        finite_temps = filter(isfinite, temp_series)
+        temp_k = temp_series .+ (!isempty(finite_temps) && maximum(finite_temps) < 200.0 ? 273.15 : 0.0)
+
+        theta_series = temp_k .* (P0 ./ p_series) .^ R_OVER_CP
 
         @inbounds for it = 1:nt
             t_val = t_values[it]
@@ -263,7 +267,7 @@ function _build_rows_from_wide_schema!(
 end
 
 function _as_time_height_matrix(values, nt::Int, nz::Int, varname::String)
-    data = Array(values)
+    data = coalesce.(Array(values), NaN)
     if size(data) == (nt, nz)
         return Float64.(data)
     elseif size(data) == (nz, nt)
@@ -282,15 +286,14 @@ function _as_time_height_matrix(values, nt::Int, nz::Int, varname::String)
 end
 
 function _pressure_to_pa!(p::Matrix{Float64})
-    # Heuristic: values below 2000 are likely hPa.
-    if maximum(p) < 2_000.0
+    if maximum(filter(isfinite, p); init=0.0) < 2_000.0
         p .*= 100.0
     end
     return p
 end
 
 function _build_theta_matrix(ds::NCDataset, nt::Int, nz::Int)
-    theta_name = _resolve_var_name(ds, THETA_ALIASES; required = false)
+    theta_name = _resolve_var_name(ds, THETA_ALIASES; required=false)
     if theta_name !== nothing
         return _as_time_height_matrix(ds[theta_name][:], nt, nz, theta_name)
     end
@@ -298,16 +301,19 @@ function _build_theta_matrix(ds::NCDataset, nt::Int, nz::Int)
     temp_name = _resolve_var_name(ds, TEMP_ALIASES)
     pressure_name = _resolve_var_name(ds, PRESSURE_ALIASES)
 
-    t_k = _as_time_height_matrix(ds[temp_name][:], nt, nz, temp_name)
+    t_raw = _as_time_height_matrix(ds[temp_name][:], nt, nz, temp_name)
     p_pa = _as_time_height_matrix(ds[pressure_name][:], nt, nz, pressure_name)
     _pressure_to_pa!(p_pa)
+
+    finite_temps = filter(isfinite, t_raw)
+    t_k = t_raw .+ (!isempty(finite_temps) && maximum(finite_temps) < 200.0 ? 273.15 : 0.0)
 
     return t_k .* (P0 ./ p_pa) .^ R_OVER_CP
 end
 
 function _build_wind_components(ds::NCDataset, nt::Int, nz::Int)
-    u_name = _resolve_var_name(ds, U_ALIASES; required = false)
-    v_name = _resolve_var_name(ds, V_ALIASES; required = false)
+    u_name = _resolve_var_name(ds, U_ALIASES; required=false)
+    v_name = _resolve_var_name(ds, V_ALIASES; required=false)
 
     if u_name !== nothing && v_name !== nothing
         u = _as_time_height_matrix(ds[u_name][:], nt, nz, u_name)
@@ -328,7 +334,7 @@ function _build_wind_components(ds::NCDataset, nt::Int, nz::Int)
 end
 
 function _build_q_matrix(ds::NCDataset, nt::Int, nz::Int)
-    q_name = _resolve_var_name(ds, Q_ALIASES; required = false)
+    q_name = _resolve_var_name(ds, Q_ALIASES; required=false)
     if q_name === nothing
         return fill(DEFAULT_Q, nt, nz)
     end
@@ -337,12 +343,6 @@ function _build_q_matrix(ds::NCDataset, nt::Int, nz::Int)
     return q
 end
 
-"""
-    convert_ncar_cases99_to_trajectory(input_dir, output_csv)
-
-Convert raw NCAR/EOL CASES-99 tower NetCDF files to the standardized trajectory
-CSV used by run_cases99_benchmark.jl.
-"""
 function convert_ncar_cases99_to_trajectory(
     input_dir::AbstractString,
     output_csv::AbstractString,
@@ -370,7 +370,7 @@ function convert_ncar_cases99_to_trajectory(
             time_name = _resolve_var_name(ds, TIME_ALIASES)
             t_values = _read_time_seconds(ds, time_name)
 
-            z_name = _resolve_var_name(ds, HEIGHT_ALIASES; required = false)
+            z_name = _resolve_var_name(ds, HEIGHT_ALIASES; required=false)
             if z_name !== nothing
                 z_values = Float64.(collect(ds[z_name][:]))
                 nt = length(t_values)
@@ -426,9 +426,8 @@ function convert_ncar_cases99_to_trajectory(
     t_min = minimum(time_col)
     time_col .-= t_min
 
-    perm = sortperm(eachindex(time_col), by = i -> (time_col[i], z_col[i]))
+    perm = sortperm(eachindex(time_col), by=i -> (time_col[i], z_col[i]))
 
-    # Deduplicate (time, z) pairs in sorted order without intermediate vectors.
     seen = Set{Tuple{Float64,Float64}}()
     unique_indices = Int[]
     sizehint!(unique_indices, length(perm))
@@ -440,30 +439,27 @@ function convert_ncar_cases99_to_trajectory(
         end
     end
 
-    # Count vertical levels present per timestamp to find complete profiles.
     z_counts = Dict{Float64,Int}()
     for idx in unique_indices
         t = time_col[idx]
         z_counts[t] = get(z_counts, t, 0) + 1
     end
 
-    nz_required = length(unique(z_col[unique_indices]))
+    nz_required = maximum(values(z_counts))
     complete_times = Set{Float64}(t for (t, count) in z_counts if count == nz_required)
 
-    # Keep only complete timestamps so the benchmark loader receives a full
-    # rectangular (time, z) grid with no missing state entries.
     valid_indices = filter(idx -> time_col[idx] in complete_times, unique_indices)
 
     mkpath(dirname(output_csv))
     CSV.write(
         output_csv,
         (
-            time = time_col[valid_indices],
-            z = z_col[valid_indices],
-            u = u_col[valid_indices],
-            v = v_col[valid_indices],
-            theta = theta_col[valid_indices],
-            q = q_col[valid_indices],
+            time=time_col[valid_indices],
+            z=z_col[valid_indices],
+            u=u_col[valid_indices],
+            v=v_col[valid_indices],
+            theta=theta_col[valid_indices],
+            q=q_col[valid_indices],
         ),
     )
 
@@ -489,9 +485,9 @@ function main(argv::Vector{String})
     end
 
     if !isdir(input_dir)
-        println("Conversion skipped: source path not found: $input_dir")
+        @error "Conversion failed: source directory not found: $input_dir"
         println("Set NCAR_CASES99_DIR or pass an explicit input directory.")
-        return
+        exit(1)
     end
 
     convert_ncar_cases99_to_trajectory(input_dir, output_csv)
