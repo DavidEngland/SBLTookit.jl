@@ -1,0 +1,24 @@
+{
+    "datasets": {
+        "cases99": {
+            "adapter": "cases99",
+            "root_dir": "data/raw/cases99",
+            "file_pattern": "cases.99(?<month>\\d{2})(?<day>\\d{2})\\.nc$",
+            "recursive": false,
+            "base_year": 1999
+        },
+        "floss": {
+            "adapter": "floss",
+            "root_dir": "data/raw/floss",
+            "file_pattern": "floss\\.(?<y2>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.nc$",
+            "recursive": true,
+            "year_offset": 2000
+        },
+        "bllast": {
+            "adapter": "bllast",
+            "root_dir": "data/raw/bllast",
+            "file_pattern": ".*_(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})\\.nc$",
+            "recursive": true
+        }
+    }
+}

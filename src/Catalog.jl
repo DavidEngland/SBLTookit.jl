@@ -1,35 +1,50 @@
-# src/Catalog.jl
-module Catalog
+using Dates
+using Glob
 
-using JSON3
-
-struct DatasetMeta
-    id::String
-    name::String
-    status::String
-    priority::String
-    ingestion_source::String
-    primary_papers::Vector{String}
+struct CampaignFileSpec
+    path::String
+    date::Date
+    adapter::Symbol
 end
 
-function load_catalog(json_path::String)::Dict{String, DatasetMeta}
-    raw = read(json_path, String)
-    data = JSON3.read(raw)
-    catalog = Dict{String, DatasetMeta}()
+function discover_campaign_files(config::Dict)::Vector{CampaignFileSpec}
+    root = config["root_dir"]
+    pattern = Regex(config["file_pattern"])
+    recursive = get(config, "recursive", false)
+    adapter = Symbol(config["adapter"])
 
-    for ds in data.datasets
-        id = String(ds.id)
-        meta = DatasetMeta(
-            id,
-            String(ds.name),
-            String(ds.status),
-            String(ds.priority),
-            String(ds.data_assets.ingestion_source),
-            String.[p for p in ds.literature_context.primary_papers]
-        )
-        catalog[id] = meta
+    # Fast directory walk
+    files = String[]
+    if recursive
+        for (dirpath, _, filenames) in walkdir(root)
+            append!(files, [joinpath(dirpath, f) for f in filenames])
+        end
+    else
+        files = readdir(root, join=true)
     end
-    return catalog
-end
 
-end # module
+    matched_files = CampaignFileSpec[]
+
+    for file_path in files
+        m = match(pattern, basename(file_path))
+        isnothing(m) && continue
+
+        # Extract date components from named regex capture groups
+        year = if haskey(m, :year)
+            parse(Int, m[:year])
+        elseif haskey(m, :y2)
+            parse(Int, m[:y2]) + get(config, "year_offset", 2000)
+        else
+            get(config, "base_year", 2026)
+        end
+
+        month = parse(Int, m[:month])
+        day = parse(Int, m[:day])
+
+        push!(matched_files, CampaignFileSpec(file_path, Date(year, month, day), adapter))
+    end
+
+    # Sort files chronologically
+    sort!(matched_files, by=x -> x.date)
+    return matched_files
+end

@@ -1,36 +1,13 @@
 module SBLToolkit
 
 using Dates
+using DataFrames
 using NCDatasets
 using DSP
 using LinearAlgebra
 using Statistics
 using Interpolations
-
-export SBLDataset, ingest_nc, clean_gaps, modal_decomposition,
-    butterworth_lowpass, separate_jet_and_wave, track_jet_core
-
-# Include ultra subsystem components if present
-if isdir(joinpath(@__DIR__, "ultra"))
-    include("ultra/core_types.jl")
-    include("ultra/stability.jl")
-    include("ultra/forcing.jl")
-    include("ultra/spectral_engine.jl")
-    include("ultra/spectral_reconstruction.jl")
-    include("ultra/adapters/cabauw_adapter.jl")
-    include("ultra/adapters/neon_adapter.jl")
-    include("ultra/adapters/icos_adapter.jl")
-    include("ultra/adapters/ameriflux_adapter.jl")
-    include("ultra/adapters/smear_adapter.jl")
-    include("ultra/UnifiedBLIngestion.jl")
-
-    export MeteorologicalProfile, ProfileMetadata, StandardizedBLObservation
-    export classify_stability, generate_scm_forcing
-    export chebyshev_fingerprint, reconstruct_from_chebyshev
-    export extract_temperature_observations, extract_neon_observations, upscale_sparse_icos_observation
-    export load_ameriflux_registry, get_site_metadata
-    export detect_network_format, ingest_boundary_layer_data, batch_spectral_fingerprints
-end
+using JSON3
 
 struct SBLDataset
     site::String
@@ -41,6 +18,57 @@ struct SBLDataset
     u_star::Vector{Float64}
     qc_mask::BitVector
 end
+
+# -------------------------------------------------------------------
+# Include and expose submodules from src/ultra
+# -------------------------------------------------------------------
+if isdir(joinpath(@__DIR__, "ultra"))
+    include("ultra/core_types.jl")
+    using .CoreTypes
+
+    include("ultra/forcing.jl")
+    using .UltraForcing
+
+    include("ultra/stability.jl")
+    using .UltraStability
+
+    include("ultra/spectral_engine.jl")
+    using .SpectralEngine
+
+    include("ultra/spectral_reconstruction.jl")
+    using .SpectralReconstruction
+
+    # Adapters
+    include("ultra/adapters/cabauw_adapter.jl")
+    using .CabauwAdapter
+
+    include("ultra/adapters/neon_adapter.jl")
+    using .NEONAdapter
+
+    include("ultra/adapters/icos_adapter.jl")
+    using .ICOSAdapter
+
+    include("ultra/adapters/ameriflux_adapter.jl")
+    using .AmeriFluxAdapter
+
+    # Ingestion Router
+    include("ultra/UnifiedBLIngestion.jl")
+    using .UnifiedBLIngestion
+
+    # Re-export public API symbols at package root
+    export MeteorologicalProfile, ProfileMetadata, StandardizedBLObservation
+    export classify_stability, generate_scm_forcing
+    export chebyshev_fingerprint, reconstruct_from_chebyshev
+    export extract_temperature_observations, extract_neon_observations, upscale_sparse_icos_observation
+    export load_ameriflux_registry, get_site_metadata
+    export detect_network_format, ingest_boundary_layer_data, batch_spectral_fingerprints
+end
+
+# -------------------------------------------------------------------
+# Core SBLToolkit Functions
+# -------------------------------------------------------------------
+export SBLDataset, ingest_nc, clean_gaps, modal_decomposition,
+    butterworth_lowpass, separate_jet_and_wave, track_jet_core
 
 function ingest_nc(file_path::String, site_name::String)::SBLDataset
     return NCDataset(file_path, "r") do ds
@@ -125,4 +153,4 @@ function track_jet_core(heights::Vector{Float64}, V2::Vector{Float64}, PC2_LLJ::
     return U_llj, z_llj, u_max
 end
 
-end # module
+end # module SBLToolkit

@@ -4,7 +4,7 @@ using Test
 using DataFrames
 using Dates
 
-# Ensure local src/ is accessible during direct execution
+# Ensure local src/ is accessible during direct script execution
 project_src = joinpath(@__DIR__, "..", "src")
 if !(project_src in LOAD_PATH)
     push!(LOAD_PATH, project_src)
@@ -57,10 +57,10 @@ using SBLToolkit
         # Cabauw Station Adapter
         @testset "Cabauw Adapter" begin
             df_cabauw = DataFrame(
-                datetime=[DateTime(2026, 8, 22, 12, 0)],
-                TA_2m=[18.5], TA_10m=[18.2], TA_20m=[17.8],
-                TA_40m=[17.3], TA_80m=[16.5], TA_140m=[15.6], TA_200m=[14.8],
-                ustar=[0.32], L_obukhov=[-50.0]
+                datetime = [DateTime(2026, 8, 22, 12, 0)],
+                TA_2m = [18.5], TA_10m = [18.2], TA_20m = [17.8],
+                TA_40m = [17.3], TA_80m = [16.5], TA_140m = [15.6], TA_200m = [14.8],
+                ustar = [0.32], L_obukhov = [-50.0]
             )
             obs = extract_temperature_observations(df_cabauw)
             @test length(obs) == 1
@@ -69,12 +69,12 @@ using SBLToolkit
             @test obs[1].robust_for_eta3 == true
         end
 
-        # NEON Multi-Tier Adapter (expects startDateTime or timestamp)
+        # NEON Multi-Tier Adapter
         @testset "NEON Adapter" begin
             df_neon = DataFrame(
-                startDateTime=[DateTime(2026, 8, 22, 12, 0)],
-                temp_z1=[22.1], temp_z2=[21.5], temp_z3=[20.8],
-                ustar=[0.28], L=[-45.0]
+                datetime = [DateTime(2026, 8, 22, 12, 0)],
+                temp_z1 = [22.1], temp_z2 = [21.5], temp_z3 = [20.8],
+                ustar = [0.28], L = [-45.0]
             )
             obs = extract_neon_observations(df_neon, "temp", [2.0, 10.0, 30.0]; campaign="NEON-HARV")
             @test length(obs) == 1
@@ -105,9 +105,9 @@ using SBLToolkit
 
     @testset "Unified Ingestion Router & Batch Pipeline" begin
         df_cabauw = DataFrame(
-            datetime=[DateTime(2026, 8, 22)],
-            TA_2m=[15.0], TA_10m=[14.5], TA_20m=[14.0],
-            TA_40m=[13.5], TA_80m=[13.0], TA_140m=[12.0], TA_200m=[11.0]
+            datetime = [DateTime(2026, 8, 22)],
+            TA_2m = [15.0], TA_10m = [14.5], TA_20m = [14.0],
+            TA_40m = [13.5], TA_80m = [13.0], TA_140m = [12.0], TA_200m = [11.0]
         )
         @test detect_network_format(df_cabauw) == :cabauw
 
@@ -124,8 +124,6 @@ using SBLToolkit
 
         for camp in campaigns
             camp_path = joinpath(raw_dir, camp)
-            # Ensure folder tree structure exists before testing integrity
-            mkpath(camp_path)
             @testset "Raw Campaign Directory: $camp" begin
                 @test isdir(camp_path)
             end
