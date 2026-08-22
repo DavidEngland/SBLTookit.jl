@@ -33,9 +33,40 @@ SBLToolkit.jl/
 │   ├── SBLToolkit.jl         # Primary module interface
 │   ├── Catalog.jl            # Catalog JSON parser
 │   ├── Transformations.jl    # Planar Fit & rotation math
-│   └── IngestBLLAST.jl       # Campaign-specific parsers
+│   ├── IngestBLLAST.jl       # Campaign-specific parsers
+│   └── ultra/                # Ultra-stability ingestion and analysis
+│       ├── adapters/         # Network-specific adapters
+│       ├── core_types.jl
+│       ├── forcing.jl
+│       ├── stability.jl
+│       ├── spectral_engine.jl
+│       ├── spectral_reconstruction.jl
+│       └── UnifiedBLIngestion.jl
 ├── scripts/
 │   └── process_campaign.jl   # CLI worker for single dataset
 └── data/
     ├── raw/                  # Input NetCDF files
     └── processed/            # Output JLD2 matrices
+
+
+---
+
+The `SBLToolkit.jl` repository structure organizes observational data ingestion, Monin-Obukhov boundary layer physics, and Chebyshev profile decomposition into a modular pipeline.
+
+**Repository Architecture Map**
+
+| Directory / Subsystem | Core Components | Primary Responsibilities |
+| --- | --- | --- |
+| **`src/ultra/adapters/`** | `ameriflux_adapter.jl`, `cabauw_adapter.jl`, `icos_adapter.jl`, `neon_adapter.jl`, `smear_adapter.jl`, `sheba_adapter.jl`, `bllast_adapter.jl` | Normalizes heterogeneous tower network files into standardized observation contracts. |
+| **`src/ultra/`** | `core_types.jl`, `forcing.jl`, `stability.jl`, `spectral_engine.jl`, `spectral_reconstruction.jl`, `UnifiedBLIngestion.jl` | Houses core math engines for Chebyshev profile projection, SCM forcing generation, stability regimes, and auto-routing. |
+| **`data/`** | `raw/` (`bllast`, `cases99`, `floss`, `gabls3`, `sheba`), `processed/`, `catalog.json` | Stores raw field campaign observations, transformed datasets, and network site lookup registries. |
+| **`scripts/`** | `process_campaign.jl`, `convert_ncar_cases99.jl`, `convert_sheba.jl`, `RiCurvature.jl`, `etas.jl` | Operational CLI entrypoints for dataset transformations, stability audits, and bulk calculations. |
+| **`notes/`** | `Stability Closure Comparison.md`, `audit_seb_nc.md`, `21Aug2026.md` | Scientific audit logs, surface energy balance diagnostics, and closure theory comparisons. |
+
+---
+
+**Pipeline Execution Workflow**
+
+* **Data Standardization:** `scripts/convert_*.jl` scripts read raw campaign files in `data/raw/` and feed them through `UnifiedBLIngestion.jl`.
+* **Spectral Analysis:** Multi-level profiles pass through `spectral_engine.jl` to compute logarithmic Chebyshev coefficients ($c_0, c_1, c_2, c_3$).
+* **SCM Driving:** `forcing.jl` generates Single Column Model boundary conditions (`theta_tendency`, `zeta_reference`, heat fluxes) categorized by regime using `stability.jl`.
