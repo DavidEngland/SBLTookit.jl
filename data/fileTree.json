@@ -1,24 +1,53 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "version": "2.0.0",
+    "allowed_extensions": [
+        "nc",
+        "csv",
+        "dat",
+        "h5",
+        "parquet",
+        "txt"
+    ],
     "datasets": {
         "cases99": {
-            "adapter": "cases99",
-            "root_dir": "data/raw/cases99",
-            "file_pattern": "cases.99(?<month>\\d{2})(?<day>\\d{2})\\.nc$",
-            "recursive": false,
-            "base_year": 1999
+            "base_dir": "data/cases99",
+            "path_template": "{stage}",
+            "file_pattern": "^cases\\.(?<year>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.(?<ext>[a-zA-Z0-9]+)$",
+            "temporal_type": "yymmdd",
+            "default_year_prefix": "19"
         },
-        "floss": {
-            "adapter": "floss",
-            "root_dir": "data/raw/floss",
-            "file_pattern": "floss\\.(?<y2>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.nc$",
-            "recursive": true,
-            "year_offset": 2000
+        "floss_i": {
+            "base_dir": "data/floss",
+            "path_template": "FLOSS_i/{sub_dir}",
+            "file_pattern": "^floss\\.(?<year>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.(?<ext>[a-zA-Z0-9]+)$",
+            "temporal_type": "yymmdd",
+            "default_year_prefix": "20"
         },
-        "bllast": {
-            "adapter": "bllast",
-            "root_dir": "data/raw/bllast",
-            "file_pattern": ".*_(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})\\.nc$",
-            "recursive": true
+        "floss_ii": {
+            "base_dir": "data/floss",
+            "path_template": "FLOSS_ii/{sub_dir}",
+            "file_pattern": "^flossii\\.(?<year>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.(?<ext>[a-zA-Z0-9]+)$",
+            "temporal_type": "yymmdd",
+            "default_year_prefix": "20"
+        },
+        "bllast_high_freq": {
+            "base_dir": "data/bllast",
+            "path_template": "raw/{format}/{height}",
+            "file_pattern": "^BLLAST_(?<site>[^_]+)_(?<location>[^_]+)_(?<height>\\d+m)_Y(?<year>\\d{4})D(?<doy>\\d{3})\\.(?<ext>[a-zA-Z0-9]+)$",
+            "temporal_type": "julian"
+        },
+        "bllast_flux": {
+            "base_dir": "data/bllast",
+            "path_template": "Flux_Files",
+            "file_pattern": "^BLLAST(?<campaign_year>\\d{4})_(?<site>[^_]+)_(?<location>[^_]+)_(?<height>\\d+m)_flux(?<averaging_mins>\\d+)mins\\.(?<ext>[a-zA-Z0-9]+)$",
+            "temporal_type": "none"
+        },
+        "sheba": {
+            "base_dir": "data/sheba",
+            "path_template": "{stage}",
+            "file_pattern": "^(?<dataset_name>[a-zA-Z0-9_]+)\\.(?<ext>[a-zA-Z0-9]+)$",
+            "temporal_type": "none"
         }
     }
 }

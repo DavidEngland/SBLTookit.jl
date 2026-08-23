@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "2.2.0",
+  "datasets": {
+    "bllast_flux_text": {
+      "base_dir": "data/bllast/aeris-catalogue-prod",
+      "file_pattern": "^BLLAST2011_SuperSite1_Valimev(?<height>\\d+m)_flux(?<averaging_mins>\\d+)mins\\.txt$",
+      "file_format": "txt",
+      "data_type": "text_matrix",
+      "parse_strategy": "delimited"
+    },
+    "sheba_raw_text": {
+      "base_dir": "data/sheba/raw",
+      "file_pattern": "^(?<dataset_name>prof_file_all6_ed_hd|main_file6_hd)\\.txt$",
+      "file_format": "txt",
+      "data_type": "fixed_width_profile",
+      "parse_strategy": "fortran_column"
+    },
+    "weatherpak": {
+      "base_dir": "data/WeatherPak",
+      "file_pattern": "^WeatherPak\\.txt$",
+      "file_format": "txt",
+      "data_type": "station_series",
+      "parse_strategy": "delimited"
+    },
+    "campaign_documentation": {
+      "base_dir": "data",
+      "file_pattern": "^(?<doc_type>README-info|readme|read_me|order_info).*(?<ext>\\.txt)$",
+      "file_format": "txt",
+      "data_type": "documentation",
+      "parse_strategy": "ignore_data_pipeline"
+    },
+    "system_manifests": {
+      "base_dir": "data",
+      "file_pattern": "^(?<manifest_type>SHA256SUMS|base_badm_download_urls|requested_files_manifest.*|sources|ls-R)\\.txt$",
+      "file_format": "txt",
+      "data_type": "system_metadata",
+      "parse_strategy": "system_verify"
+    }
+  }
+}

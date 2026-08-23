@@ -1,0 +1,87 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "version": "2.1.0",
+    "datasets": {
+        "ameriflux_tower_data": {
+            "base_dir": "data/ameriflux/base_badm_extracted",
+            "file_pattern": "^AMF_(?<site>[A-Za-z0-9-]+)_BASE_HH_(?<version_major>\\d+)-(?<version_minor>\\d+)\\.csv$",
+            "file_format": "csv",
+            "data_type": "time_series"
+        },
+        "ameriflux_metadata": {
+            "base_dir": "data/ameriflux",
+            "file_pattern": "^(?<meta_type>citations_for_site_data|team_contacts_for_site_data|base_badm_mapping).*(?<ext>\\.csv)$",
+            "file_format": "csv",
+            "data_type": "metadata"
+        },
+        "draft_trajectories": {
+            "base_dir": "data/drafts/trajectories",
+            "file_pattern": "^trajectory_(?<campaign>[a-zA-Z0-9_]+)\\.csv$",
+            "file_format": "csv",
+            "data_type": "trajectory"
+        },
+        "pipeline_stage_outputs": {
+            "base_dir": "data/outputs",
+            "file_pattern": "^stage(?<stage>\\d+)_(?<analysis>[a-zA-Z0-9_]+)_(?<campaign>[a-zA-Z0-9_]+)\\.csv$",
+            "file_format": "csv",
+            "data_type": "derived_analysis"
+        },
+        "pipeline_transition_panels": {
+            "base_dir": "data/outputs",
+            "file_pattern": "^transition_panel_(?<panel_id>[a-z])_(?:(?<is_profile>profile)_)?(?<campaign>[a-zA-Z0-9_]+)\\.csv$",
+            "file_format": "csv",
+            "data_type": "derived_analysis"
+        },
+        "pipeline_regime_analysis": {
+            "base_dir": "data/outputs",
+            "file_pattern": "^regime_(?<analysis_type>scatterplots|trajectories)_(?<campaign>[a-zA-Z0-9_]+)\\.csv$",
+            "file_format": "csv",
+            "data_type": "derived_analysis"
+        },
+        "pipeline_structural_correlations": {
+            "base_dir": "data/outputs",
+            "file_pattern": "^structural_(?<metric>correlations|lagcorr)_(?<campaign>[a-zA-Z0-9_]+)\\.csv$",
+            "file_format": "csv",
+            "data_type": "derived_analysis"
+        },
+        "cases99_raw": {
+            "base_dir": "data/cases99",
+            "file_pattern": "^cases\\.(?<year>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.(?<ext>nc|csv|dat)$",
+            "file_format": "multi",
+            "temporal_type": "yymmdd",
+            "year_prefix": "19"
+        },
+        "floss_i": {
+            "base_dir": "data/floss",
+            "file_pattern": "^floss\\.(?<year>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.(?<ext>nc|csv|dat)$",
+            "file_format": "multi",
+            "temporal_type": "yymmdd",
+            "year_prefix": "20"
+        },
+        "floss_ii": {
+            "base_dir": "data/floss",
+            "file_pattern": "^flossii\\.(?<year>\\d{2})(?<month>\\d{2})(?<day>\\d{2})\\.(?<ext>nc|csv|dat)$",
+            "file_format": "multi",
+            "temporal_type": "yymmdd",
+            "year_prefix": "20"
+        },
+        "bllast_high_freq": {
+            "base_dir": "data/bllast",
+            "file_pattern": "^BLLAST_(?<site>[^_]+)_(?<location>[^_]+)_(?<height>\\d+m)_Y(?<year>\\d{4})D(?<doy>\\d{3})\\.(?<ext>nc|csv)$",
+            "file_format": "multi",
+            "temporal_type": "julian"
+        },
+        "sheba_csv": {
+            "base_dir": "data/sheba/processed",
+            "file_pattern": "^sheba_(?<variant>stable|input)\\.csv$",
+            "file_format": "csv",
+            "data_type": "processed_forcing"
+        },
+        "icos_metadata": {
+            "base_dir": "data/icos",
+            "file_pattern": "^stations\\.csv$",
+            "file_format": "csv",
+            "data_type": "metadata"
+        }
+    }
+}
