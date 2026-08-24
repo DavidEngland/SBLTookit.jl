@@ -1,10 +1,14 @@
-.PHONY: all instantiate process clean test symlinks help
+.PHONY: all instantiate process heatmaps exports clean test symlinks help
 
 JULIA = julia --project=.
 PIPELINE = ./run_pipeline.sh
 DATA_SRC = $(abspath ../SpectralBL-Analytics/data)
 
-all: symlinks instantiate process
+# Scripts
+HEATMAP_SCRIPT = scripts/plot_obukhov_heatmaps.jl
+EXPORTS_SCRIPT = scripts/run_campaign_exports.jl
+
+all: symlinks instantiate process heatmaps
 
 symlinks:
 	@mkdir -p data/raw
@@ -22,16 +26,29 @@ instantiate:
 process:
 	$(PIPELINE)
 
+heatmaps:
+	@echo "Generating SBLTookit $L(z,t)$ observational heatmaps..."
+	$(JULIA) $(HEATMAP_SCRIPT)
+
+exports:
+	@echo "Generating campaign exports and slow manifold diagnostics..."
+	$(JULIA) $(EXPORTS_SCRIPT)
+
 test:
 	$(JULIA) -e 'using Pkg; Pkg.test()'
 
 clean:
 	rm -rf data/processed/*.jld2
+	rm -rf reports/generated/sbltookit_heatmaps/*
+	rm -rf reports/generated/campaign_exports/*
 
 help:
-	@echo "SBLToolkit.jl Build Commands:"
+	@echo "SBLTookit.jl Build Commands:"
 	@echo "  make instantiate  - Install and precompile Julia dependencies"
 	@echo "  make process      - Execute parallel processing pipeline across datasets"
-	@echo "  make clean        - Remove processed JLD2 output files"
+	@echo "  make heatmaps     - Generate L(z,t) observational heatmaps for campaigns"
+	@echo "  make exports      - Run campaign data exports and manifold heatmaps"
+	@echo "  make all          - Symlink data, instantiate dependencies, process, and render heatmaps"
+	@echo "  make clean        - Remove processed JLD2 output files and generated figures"
 	@echo "  make test         - Run package test suite"
 	@echo "  make symlinks     - Create necessary symlinks for raw data"
