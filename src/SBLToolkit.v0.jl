@@ -19,14 +19,7 @@ struct SBLDataset
     qc_mask::BitVector
 end
 
-# -------------------------------------------------------------------
-# Dataset Registry Integration
-# -------------------------------------------------------------------
-include("DatasetRegistry.jl")
-using .DatasetRegistry
-
-export discover_campaign_trajectories
-
+include("DatasetRegistry.jl")  #
 # -------------------------------------------------------------------
 # Include and expose submodules from src/ultra
 # -------------------------------------------------------------------

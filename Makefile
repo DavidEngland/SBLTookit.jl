@@ -4,7 +4,6 @@ JULIA = julia --project=.
 PIPELINE = ./run_pipeline.sh
 DATA_SRC = $(abspath ../SpectralBL-Analytics/data)
 
-# Scripts
 HEATMAP_SCRIPT = scripts/plot_obukhov_heatmaps.jl
 EXPORTS_SCRIPT = scripts/run_campaign_exports.jl
 
@@ -13,6 +12,8 @@ all: symlinks instantiate process heatmaps
 symlinks:
 	@mkdir -p data/raw
 	@test -L data/datasets.json || ln -sf $(DATA_SRC)/datasets.json data/datasets.json
+	@test -L data/drafts || ln -sf $(DATA_SRC)/drafts data/drafts
+	@test -L data/ameriflux || ln -sf $(DATA_SRC)/ameriflux data/ameriflux
 	@test -L data/raw/bllast || ln -sf $(DATA_SRC)/bllast/aeris-catalogue-prod/data/wget/113d60ba-81c9-fc79-31b2-7bbfb524fa57/processed/uniform_processing data/raw/bllast
 	@test -L data/raw/floss || ln -sf $(DATA_SRC)/floss data/raw/floss
 	@test -L data/raw/cases99 || ln -sf $(DATA_SRC)/cases99 data/raw/cases99
@@ -26,11 +27,11 @@ instantiate:
 process:
 	$(PIPELINE)
 
-heatmaps:
-	@echo "Generating SBLTookit $L(z,t)$ observational heatmaps..."
+heatmaps: symlinks
+	@echo "Generating SBLToolkit L(z,t) observational heatmaps..."
 	$(JULIA) $(HEATMAP_SCRIPT)
 
-exports:
+exports: symlinks
 	@echo "Generating campaign exports and slow manifold diagnostics..."
 	$(JULIA) $(EXPORTS_SCRIPT)
 
@@ -39,11 +40,11 @@ test:
 
 clean:
 	rm -rf data/processed/*.jld2
-	rm -rf reports/generated/sbltookit_heatmaps/*
+	rm -rf reports/generated/sbltoolkit_heatmaps/*
 	rm -rf reports/generated/campaign_exports/*
 
 help:
-	@echo "SBLTookit.jl Build Commands:"
+	@echo "SBLToolkit.jl Build Commands:"
 	@echo "  make instantiate  - Install and precompile Julia dependencies"
 	@echo "  make process      - Execute parallel processing pipeline across datasets"
 	@echo "  make heatmaps     - Generate L(z,t) observational heatmaps for campaigns"
