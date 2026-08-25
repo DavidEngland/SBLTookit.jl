@@ -11,7 +11,7 @@ const CP_AIR = 1004.67   # Specific heat of dry air [J/(kg K)]
 const RHO_CP = RHO_AIR * CP_AIR  # ~1230.7 J/(m^3 K)
 const LAPSE_DRY = 0.0098  # Dry adiabatic lapse rate [K/m]
 
-# Explicit matching of level-suffixed tower variables: variable + height + optional 'm'
+# Match level-suffixed tower variables explicitly: variable + height + optional 'm'
 const TOWER_LEVEL_RE = r"^(w_tc|wthv|wth|wt|u_w|v_w|hsb|usb|hlb|ws|wd|tc|temp|theta_v|theta|th|t|u|v|w|T|U|V)_?(\d+(?:[\._]\d+)?)m?$"
 
 # ---------------------------------------------------------------------------
@@ -49,6 +49,7 @@ function extract_decoded_time(ds::NCDataset)
         return time_raw
     end
 
+    # Try attribute decoding if raw numeric values returned
     if haskey(ds, "time") && haskey(ds["time"].attrib, "units")
         try
             return NCDatasets.num2date(time_raw, ds["time"].attrib["units"])
@@ -101,11 +102,12 @@ end
     normalize_thermodynamics(ds::NCDataset, z::Vector{Float64}, N_t::Int)
 
 Extracts and converts thermodynamic variables to Virtual Potential Temperature (\\theta_v).
+Calculates \\theta_v = \\theta (1 + 0.61 q) or \\theta_v \\approx T + \\gamma_{dry} z as fallback.
 """
 function normalize_thermodynamics(ds::NCDataset, z::Vector{Float64}, N_t::Int)
     N_z = length(z)
 
-    # Direct Virtual Potential Temperature (\theta_v)
+    # 1. Direct Virtual Potential Temperature (\theta_v)
     thv_raw = get_nc_var(ds, ["theta_v", "thv", "THETA_V"]; required=false)
     if thv_raw !== nothing
         thv_mat = ensure_2d_matrix(thv_raw, N_z, N_t; name="theta_v")
@@ -116,7 +118,7 @@ function normalize_thermodynamics(ds::NCDataset, z::Vector{Float64}, N_t::Int)
         return thv_mat
     end
 
-    # Potential Temperature (\theta)
+    # 2. Potential Temperature (\theta)
     th_raw = get_nc_var(ds, ["theta", "th", "THETA"]; required=false)
     q_raw = get_nc_var(ds, ["q", "qv", "SPEC_HUM"]; required=false)
 
@@ -134,7 +136,7 @@ function normalize_thermodynamics(ds::NCDataset, z::Vector{Float64}, N_t::Int)
         return th_mat
     end
 
-    # Absolute Temperature (T) conversion to \theta_v
+    # 3. Absolute Temperature (T) conversion to \theta_v
     t_raw = get_nc_var(ds, ["temp", "t", "T", "tc"]; required=true)
     t_mat = ensure_2d_matrix(t_raw, N_z, N_t; name="temperature")
     valid = filter(!isnan, t_mat)
@@ -167,7 +169,7 @@ function normalize_heat_flux(wth_mat::Matrix{Float64}; flux_convention::Symbol=:
 end
 
 """
-    normalize_momentum_flux(ds::NCDataset, N_z::Int, N_t::Int)
+    normalize_momentum_flux(uw_raw, vw_raw, N_z::Int, N_t::Int)
 
 Converts friction velocity u_* (usb) elementwise via \\overline{u'w'} = -u_*^2 for valid positive values.
 """
@@ -192,7 +194,7 @@ function normalize_momentum_flux(ds::NCDataset, N_z::Int, N_t::Int)
 end
 
 # ---------------------------------------------------------------------------
-# Layer 3: Tower & Gridded Ingestion Workflows
+# Tower & Gridded Ingestion Workflows
 # ---------------------------------------------------------------------------
 
 function try_extract_tower_2d(ds::NCDataset)
@@ -256,6 +258,7 @@ function try_extract_tower_2d(ds::NCDataset)
         end
     end
 
+    # Thermodynamic conversion T -> \theta_v
     valid_t = filter(!isnan, tc_mat)
     if !isempty(valid_t) && mean(valid_t) < 100.0
         tc_mat .+= 273.15
@@ -306,20 +309,11 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
             time_raw = extract_decoded_time(ds)
             N_t = length(time_raw)
 
-            # Safely extract 1D height profile from 1D, 2D, or N-D coordinate arrays
+            # Extract 1D height coordinate along vertical dimension
             if ndims(z_raw) == 2
-                s1, s2 = size(z_raw)
-                if s2 == N_t
-                    z = Float64.(z_raw[:, 1])
-                elseif s1 == N_t
-                    z = Float64.(z_raw[1, :])
-                else
-                    z = Float64.(z_raw[:, 1])
-                end
-            elseif ndims(z_raw) > 2
-                z = Float64.(vec(z_raw[:, 1, 1]))
+                z = size(z_raw, 2) == N_t ? Float64.(z_raw[:, 1]) : Float64.(z_raw[1, :])
             else
-                z = Float64.(z_raw)
+                z = Float64.(vec(z_raw))
             end
             N_z = length(z)
 
@@ -363,30 +357,22 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
         C_coord_2d = fill(NaN, N_z, N_t)
         delta_clos_2d = fill(NaN, N_z, N_t)
 
+        # Explicit Diagnostic Masks
         mask_missing = fill(false, N_z, N_t)
         mask_nocturnal = fill(false, N_z, N_t)
         mask_ill_conditioned = fill(false, N_z, N_t)
 
-        # Minimum level guard: finite differencing in GSPTPhase2 requires N_z >= 3
-        if N_z < 3
-            @warn "Dataset '$nc_path' has only $N_z vertical levels ($z m). GSPT requires N_z >= 3 for spatial derivatives. Skipping solver execution."
-            return (
-                z=z, time=time_raw, R_coord=R_coord_2d, C_const=C_const_2d,
-                C_coord=C_coord_2d, delta_closure=delta_clos_2d,
-                mask_missing=fill(true, N_z, N_t), mask_nocturnal=mask_nocturnal,
-                mask_ill_conditioned=mask_ill_conditioned
-            )
-        end
-
         compute_column! = t -> begin
             sfc_flux = wth_mat[1, t]
 
+            # Nocturnal Masking (\overline{w'\theta'} < 0)
             is_noct = !isnan(sfc_flux) && sfc_flux < 0.0
             mask_nocturnal[:, t] .= is_noct
             if nocturnal_only && !is_noct
                 return nothing
             end
 
+            # Check profile completeness (reject NaNs in critical fields)
             u_col, v_col, thv_col = u_mat[:, t], v_mat[:, t], thv_mat[:, t]
             has_missing = any(isnan, u_col) || any(isnan, v_col) || any(isnan, thv_col)
             if has_missing
@@ -400,7 +386,64 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
                 tke_mat[:, t], Km_mat[:, t],
                 σ_u, σ_v, σ_th, 0.01
             )
+            # 1. Fix 2D/N-D Vertical Coordinate Dimensionality
+            if ndims(z_raw) >= 2
+                s1, s2 = size(z_raw)[1:2]
+                if s2 == N_t
+                    z = Float64.(z_raw[:, 1])
+                elseif s1 == N_t
+                    z = Float64.(z_raw[1, :])
+                else
+                    z = Float64.(z_raw[:, 1])
+                end
+            else
+                z = Float64.(z_raw)
+            end
+            N_z = length(z)
 
+            # 2. Add Reshaping Support for Multi-Level 1D Flux Arrays (e.g., 5 levels * 144 times = 720)
+            function ensure_2d_matrix(arr, N_z::Int, N_t::Int; name::String="variable")
+                mat = fill(NaN, N_z, N_t)
+                arr === nothing && return mat
+
+                if ndims(arr) == 1
+                    vec_arr = vec(arr)
+                    if length(vec_arr) == N_t
+                        mat[1, :] .= vec_arr
+                    elseif length(vec_arr) == N_z
+                        mat .= repeat(reshape(vec_arr, N_z, 1), 1, N_t)
+                    elseif length(vec_arr) == N_z * N_t
+                        return reshape(Float64.(vec_arr), N_z, N_t)
+                    elseif mod(length(vec_arr), N_t) == 0
+                        n_sub = div(length(vec_arr), N_t)
+                        sub_mat = reshape(Float64.(vec_arr), n_sub, N_t)
+                        min_z = min(n_sub, N_z)
+                        mat[1:min_z, :] .= sub_mat[1:min_z, :]
+                    else
+                        @warn "ensure_2d_matrix: 1D '$name' length $(length(vec_arr)) unresolvable; filling with NaN."
+                    end
+                elseif ndims(arr) == 2
+                    s1, s2 = size(arr)
+                    if s1 == N_z && s2 == N_t
+                        return arr
+                    elseif s1 == N_t && s2 == N_z
+                        return permutedims(arr, (2, 1))
+                    end
+                end
+                return mat
+            end
+
+            # 3. Guard GSPT Derivative Engine Against Under-Determined Profiles (N_z < 3)
+            if N_z < 3
+                @warn "Dataset '$nc_path' has N_z = $N_z (< 3 levels). GSPT finite differences require N_z >= 3. Skipping solver execution."
+                return (
+                    z=z, time=time_raw,
+                    R_coord=fill(NaN, N_z, N_t), C_const=fill(NaN, N_z, N_t),
+                    C_coord=fill(NaN, N_z, N_t), delta_closure=fill(NaN, N_z, N_t),
+                    mask_missing=fill(true, N_z, N_t), mask_nocturnal=fill(false, N_z, N_t),
+                    mask_ill_conditioned=fill(false, N_z, N_t)
+                )
+            end
             res_t = compute_gspt(data_t; is_observation=true, S2_min=S2_min)
 
             R_coord_2d[:, t] .= res_t.const_geom.R_coord

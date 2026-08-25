@@ -401,6 +401,8 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
                 σ_u, σ_v, σ_th, 0.01
             )
 
+
+
             res_t = compute_gspt(data_t; is_observation=true, S2_min=S2_min)
 
             R_coord_2d[:, t] .= res_t.const_geom.R_coord
