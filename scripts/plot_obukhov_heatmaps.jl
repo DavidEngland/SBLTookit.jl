@@ -19,6 +19,9 @@ using Statistics
 const SBL_OUTPUT_DIR = joinpath(PROJECT_ROOT, "reports", "generated", "sbltoolkit_heatmaps")
 mkpath(SBL_OUTPUT_DIR)
 
+# Common vertical evaluation grid for standardized cross-campaign comparison
+const COMMON_Z_GRID = Vector{Float64}(1.0:1.0:100.0)
+
 slugify(s::String) = lowercase(replace(s, r"[^A-Za-z0-9]+" => "_"))
 norm_str(s::Union{String,Symbol}) = lowercase(replace(string(s), r"[^a-z0-9]" => ""))
 
@@ -33,7 +36,6 @@ function safe_float(val)
     return NaN
 end
 
-# Convert local Gradient Richardson number Ri_g to stability parameter zeta
 function rig_to_zeta(rig::Float64)
     !isfinite(rig) && return NaN
     if rig >= 0.0
@@ -60,7 +62,35 @@ function parse_rig_height(col_name::Symbol)
 end
 
 # -------------------------------------------------------------------
-# Two-Pass Target Matching
+# 1D Vertical Linear Interpolation to Standardized Grid
+# -------------------------------------------------------------------
+function interpolate_profile_1d(f_raw::Vector{Float64}, z_raw::Vector{Float64}, z_target::Vector{Float64})
+    valid_idx = findall(isfinite, f_raw)
+    length(valid_idx) < 2 && return fill(NaN, length(z_target))
+
+    zr, fr = z_raw[valid_idx], f_raw[valid_idx]
+    p = sortperm(zr)
+    zr, fr = zr[p], fr[p]
+
+    f_out = fill(NaN, length(z_target))
+    for (k, zt) in enumerate(z_target)
+        if zt < zr[1] || zt > zr[end]
+            continue # Avoid unconstrained extrapolation
+        end
+        idx = findfirst(z -> z >= zt, zr)
+        if idx == 1
+            f_out[k] = fr[1]
+        elseif idx !== nothing
+            z0, z1 = zr[idx-1], zr[idx]
+            f0, f1 = fr[idx-1], fr[idx]
+            f_out[k] = f0 + (f1 - f0) * (zt - z0) / (z1 - z0)
+        end
+    end
+    return f_out
+end
+
+# -------------------------------------------------------------------
+# Target-Priority Two-Pass Matching
 # -------------------------------------------------------------------
 function match_fuzzy_col(cols::Vector{Symbol}, targets::Vector{String})
     norm_targets = norm_str.(targets)
@@ -103,54 +133,61 @@ function match_nc_var(keys_list::Vector{String}, targets::Vector{String})
 end
 
 # -------------------------------------------------------------------
-# Stencil Differential Operators
+# Numerical Stencil Operators
 # -------------------------------------------------------------------
-function non_uniform_gradient_1d(f::Vector{Float64}, z::Vector{Float64})
-    n = length(z)
+function uniform_gradient_1d(f::Vector{Float64}, dz::Float64)
+    n = length(f)
     df = fill(NaN, n)
     valid_idx = findall(isfinite, f)
     length(valid_idx) < 3 && return df
 
-    zv, fv = z[valid_idx], f[valid_idx]
-    nv = length(zv)
+    fv = f[valid_idx]
+    nv = length(fv)
     dfv = zeros(Float64, nv)
 
-    dfv[1] = (fv[2] - fv[1]) / (zv[2] - zv[1])
-    dfv[end] = (fv[end] - fv[end-1]) / (zv[end] - zv[end-1])
-
+    dfv[1] = (fv[2] - fv[1]) / dz
+    dfv[end] = (fv[end] - fv[end-1]) / dz
     for i in 2:(nv-1)
-        h1, h2 = zv[i] - zv[i-1], zv[i+1] - zv[i]
-        dfv[i] = (fv[i+1]*h1^2 - fv[i-1]*h2^2 + fv[i]*(h2^2 - h1^2)) / (h1 * h2 * (h1 + h2))
+        dfv[i] = (fv[i+1] - fv[i-1]) / (2.0 * dz)
     end
 
     df[valid_idx] .= dfv
     return df
 end
 
-function non_uniform_hessian_1d(f::Vector{Float64}, z::Vector{Float64})
-    return non_uniform_gradient_1d(non_uniform_gradient_1d(f, z), z)
+function uniform_hessian_1d(f::Vector{Float64}, dz::Float64)
+    return uniform_gradient_1d(uniform_gradient_1d(f, dz), dz)
 end
 
-function assemble_derivatives_from_zeta(timestamps, z_levels, zeta_mat)
-    nz, nt = length(z_levels), length(timestamps)
+function assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
+    nt = length(timestamps)
+    z_target = COMMON_Z_GRID
+    nz_target = length(z_target)
+    dz = z_target[2] - z_target[1]
 
-    inv_L_mat = fill(NaN, nz, nt)
-    for j in 1:nt, i in 1:nz
-        if isfinite(zeta_mat[i, j]) && z_levels[i] > 1e-3
-            inv_L_mat[i, j] = zeta_mat[i, j] / z_levels[i]
+    # Interpolate input profiles onto standard z grid
+    zeta_mat = fill(NaN, nz_target, nt)
+    for j in 1:nt
+        zeta_mat[:, j] = interpolate_profile_1d(raw_zeta_mat[:, j], raw_z_levels, z_target)
+    end
+
+    inv_L_mat = fill(NaN, nz_target, nt)
+    for j in 1:nt, i in 1:nz_target
+        if isfinite(zeta_mat[i, j])
+            inv_L_mat[i, j] = zeta_mat[i, j] / z_target[i]
         end
     end
 
-    zeta_z_mat = fill(NaN, nz, nt)
-    zeta_zz_mat = fill(NaN, nz, nt)
+    zeta_z_mat = fill(NaN, nz_target, nt)
+    zeta_zz_mat = fill(NaN, nz_target, nt)
     for j in 1:nt
-        zeta_z_mat[:, j] = non_uniform_gradient_1d(zeta_mat[:, j], z_levels)
-        zeta_zz_mat[:, j] = non_uniform_hessian_1d(zeta_mat[:, j], z_levels)
+        zeta_z_mat[:, j] = uniform_gradient_1d(zeta_mat[:, j], dz)
+        zeta_zz_mat[:, j] = uniform_hessian_1d(zeta_mat[:, j], dz)
     end
 
     return (
         timestamps=timestamps,
-        z_levels=z_levels,
+        z_levels=z_target,
         inv_L=inv_L_mat,
         zeta=zeta_mat,
         zeta_z=zeta_z_mat,
@@ -159,20 +196,19 @@ function assemble_derivatives_from_zeta(timestamps, z_levels, zeta_mat)
 end
 
 # -------------------------------------------------------------------
-# Trajectory CSV Parsing Pipeline
+# Parsers
 # -------------------------------------------------------------------
 function parse_obukhov_from_df(df::DataFrame, campaign_name::String)
     cols = propertynames(df)
 
     time_col = match_fuzzy_col(cols, ["sample_index", "sampleindex", "time_value", "time", "datetime", "index"])
-    time_col === nothing && error("No valid time column found in trajectory dataframe.")
+    time_col === nothing && error("No valid time column found.")
 
     timestamps = sort(unique([safe_float(v) for v in df[!, time_col]]))
     timestamps = filter(isfinite, timestamps)
     nt = length(timestamps)
     time_map = Dict(t => j for (j, t) in enumerate(timestamps))
 
-    # Mode 1: Wide Gradient Richardson profiles (ri_g_X_Y)
     rig_cols = Symbol[]
     rig_heights = Float64[]
     for c in cols
@@ -185,54 +221,50 @@ function parse_obukhov_from_df(df::DataFrame, campaign_name::String)
 
     if length(rig_cols) >= 3
         p = sortperm(rig_heights)
-        z_levels = rig_heights[p]
-        sorted_rig_cols = rig_cols[p]
-        nz = length(z_levels)
-        zeta_mat = fill(NaN, nz, nt)
+        raw_z_levels = rig_heights[p]
+        sorted_cols = rig_cols[p]
+        nz_raw = length(raw_z_levels)
+        raw_zeta_mat = fill(NaN, nz_raw, nt)
 
-        for (i, col) in enumerate(sorted_rig_cols)
+        for (i, col) in enumerate(sorted_cols)
             for row in eachrow(df)
                 t_val = safe_float(row[time_col])
                 if haskey(time_map, t_val)
                     rig_val = safe_float(row[col])
-                    zeta_mat[i, time_map[t_val]] = rig_to_zeta(rig_val)
+                    raw_zeta_mat[i, time_map[t_val]] = rig_to_zeta(rig_val)
                 end
             end
         end
 
-        @info "Parsed Multi-Level Ri_g profiles [$campaign_name]: $(count(isfinite, zeta_mat))/$(length(zeta_mat)) non-NaN entries across $(nz) heights."
-        return assemble_derivatives_from_zeta(timestamps, z_levels, zeta_mat)
+        @info "Parsed Multi-Level Ri_g profiles [$campaign_name]: $(count(isfinite, raw_zeta_mat)) raw entries across native heights: $(raw_z_levels)"
+        return assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
     end
 
-    # Mode 2: Standard 1D L_obukhov column fallback
     l_col = match_fuzzy_col(cols, ["L_obukhov", "lobukhov", "obukhovlength", "l"])
     if l_col !== nothing
-        z_levels = [1.0, 2.0, 5.0, 10.0, 20.0, 40.0, 80.0, 120.0, 180.0]
-        nz = length(z_levels)
-        zeta_mat = fill(NaN, nz, nt)
+        raw_z_levels = Float64[1.0, 2.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0]
+        nz_raw = length(raw_z_levels)
+        raw_zeta_mat = fill(NaN, nz_raw, nt)
 
         for row in eachrow(df)
             t_val = safe_float(row[time_col])
             if haskey(time_map, t_val)
                 L_val = safe_float(row[l_col])
                 if isfinite(L_val) && abs(L_val) > 1e-4
-                    for i in 1:nz
-                        zeta_mat[i, time_map[t_val]] = z_levels[i] / L_val
+                    for i in 1:nz_raw
+                        raw_zeta_mat[i, time_map[t_val]] = raw_z_levels[i] / L_val
                     end
                 end
             end
         end
 
-        @info "Parsed 1D Surface L_obukhov [$campaign_name]: $(count(isfinite, zeta_mat))/$(length(zeta_mat)) non-NaN entries."
-        return assemble_derivatives_from_zeta(timestamps, z_levels, zeta_mat)
+        @info "Parsed 1D Surface L_obukhov [$campaign_name]"
+        return assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
     end
 
     error("No usable multi-level Ri_g profiles or L_obukhov columns in trajectory file.")
 end
 
-# -------------------------------------------------------------------
-# NetCDF Loader Fallback
-# -------------------------------------------------------------------
 function search_nc_file(campaign_name::String)
     clean = replace(lowercase(campaign_name), r"[^a-z0-9]" => "")
     candidate_dirs = [
@@ -264,7 +296,7 @@ function load_profile_from_nc(nc_path::String, campaign_name::String; g=9.81, th
         t_key === nothing && error("Missing time dimension in $nc_path.")
         timestamps = Float64.(vec(ds[t_key][:]))
 
-        z_levels = [0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0, 80.0, 100.0, 180.0]
+        raw_z_levels = Float64[0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0, 80.0, 100.0]
         u_star_key = match_nc_var(keys_list, ["ustar", "ustarm", "frictionvelocity"])
         h_key = match_nc_var(keys_list, ["hs", "heatflux", "shf", "wt", "kinematicheatflux", "h", "qsurface"])
 
@@ -272,32 +304,32 @@ function load_profile_from_nc(nc_path::String, campaign_name::String; g=9.81, th
 
         u_s = vec(Float64.(ds[u_star_key][:]))
         raw_h = vec(Float64.(ds[h_key][:]))
-        nt, nz = length(timestamps), length(z_levels)
-        zeta_mat = fill(NaN, nz, nt)
+        nt, nz_raw = length(timestamps), length(raw_z_levels)
+        raw_zeta_mat = fill(NaN, nz_raw, nt)
 
         for j in 1:nt
             wt = abs(raw_h[j]) > 5.0 ? raw_h[j] / rho_cp : raw_h[j]
             if isfinite(u_s[j]) && isfinite(wt) && abs(wt) > 1e-5
                 L_val = -(u_s[j]^3 * theta_0) / (k_vk * g * wt)
-                for i in 1:nz
-                    zeta_mat[i, j] = z_levels[i] / L_val
+                for i in 1:nz_raw
+                    raw_zeta_mat[i, j] = raw_z_levels[i] / L_val
                 end
             end
         end
 
-        @info "NetCDF Extracted Flux Profiles [$campaign_name]: $(count(isfinite, zeta_mat))/$(length(zeta_mat)) non-NaN entries."
-        return assemble_derivatives_from_zeta(timestamps, z_levels, zeta_mat)
+        @info "NetCDF Extracted Flux Profiles [$campaign_name]"
+        return assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
     end
 end
 
 # -------------------------------------------------------------------
-# Plotting Routine
+# Plotting with Locked Standardized Heights (0–100 m)
 # -------------------------------------------------------------------
 function plot_sbltoolkit_obukhov_panel(data::NamedTuple, campaign_name::String, out_path::String)
     t_axis = data.timestamps
     z_axis = data.z_levels
 
-    opts = (ylabel="Height z [m]", framestyle=:box, guidefontsize=9, tickfontsize=8, titlefontsize=10, margin=3mm)
+    opts = (ylabel="Height z [m]", ylims=(0.0, 100.0), framestyle=:box, guidefontsize=9, tickfontsize=8, titlefontsize=10, margin=3mm)
 
     cg_bwr = cgrad([:blue, :white, :red])
     cg_puor = cgrad([:purple, :white, :orange])
@@ -325,11 +357,11 @@ function plot_sbltoolkit_obukhov_panel(data::NamedTuple, campaign_name::String, 
 end
 
 # -------------------------------------------------------------------
-# Driver
+# Main Pipeline
 # -------------------------------------------------------------------
 function main()
     campaign_sources = discover_campaign_trajectories()
-    @info "Discovered $(length(campaign_sources)) campaign trajectories from manifest schema."
+    @info "Discovered $(length(campaign_sources)) campaign trajectories."
 
     success_count = 0
 
@@ -337,7 +369,6 @@ function main()
         @info "Processing $name..."
         obukhov_data = nothing
 
-        # 1. Parse CSV trajectory file
         if isfile(path)
             try
                 df = CSV.read(path, DataFrame)
@@ -347,7 +378,6 @@ function main()
             end
         end
 
-        # 2. NetCDF fallback
         if obukhov_data === nothing
             nc_file = search_nc_file(name)
             if nc_file !== nothing
@@ -367,7 +397,7 @@ function main()
 
         fig_out = joinpath(SBL_OUTPUT_DIR, "$(slugify(name))_obukhov_heatmaps.png")
         plot_sbltoolkit_obukhov_panel(obukhov_data, name, fig_out)
-        @info "Successfully rendered heatmap for $name -> $fig_out"
+        @info "Successfully rendered standardized heatmap for $name -> $fig_out"
         success_count += 1
     end
 
