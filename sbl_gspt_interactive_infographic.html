@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBL Toolkit & GSPT Analytics Infographic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white">
+
+    <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🌀</span>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
+                        SBL Toolkit & GSPT Framework
+                    </h1>
+                    <p class="text-xs text-slate-400">Stable Boundary Layer Signal Separation & Numerical Regularization</p>
+                </div>
+            </div>
+            <nav class="flex flex-wrap gap-2 text-xs font-semibold">
+                <a href="#overview" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Overview</a>
+                <a href="#campaigns" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Field Campaigns</a>
+                <a href="#ceof" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">CEOF Wave-Jet</a>
+                <a href="#regularization" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Regularization</a>
+                <a href="#gating" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">QC & GSPT Pipeline</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+        <section id="overview" class="space-y-6">
+            <div class="bg-slate-800/60 rounded-2xl p-6 sm:p-8 border border-slate-700/60 shadow-xl">
+                <div class="max-w-3xl space-y-3">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 text-xs font-medium">
+                        <span>🔬 Executive Summary</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white">Atmospheric Boundary Layer Signal Isolation & Topological Stability</h2>
+                    <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+                        The <strong class="text-teal-300">SBLToolkit.jl</strong> suite processes complex observational records from nocturnal field tower networks. By leveraging Complex Empirical Orthogonal Functions (CEOF), non-uniform Taylor-Vandermonde derivative operators, and Geometric Surface Pattern Theory (GSPT), the framework cleanly differentiates standing Low-Level Jets (LLJs) from propagating Internal Gravity Waves (IGWs) while overcoming non-linear numerical singularities.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">CEOF Accuracy</span>
+                        <div class="text-2xl sm:text-3xl font-black text-teal-400 mt-2">99.93%</div>
+                        <span class="text-[11px] text-slate-400 mt-1">Wave Wavenumber Extraction</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Jet Variance Share</span>
+                        <div class="text-2xl sm:text-3xl font-black text-sky-400 mt-2">91.37%</div>
+                        <span class="text-[11px] text-slate-400 mt-1">Standing Mode 1 Isolation</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Wave Variance Share</span>
+                        <div class="text-2xl sm:text-3xl font-black text-indigo-400 mt-2">8.62%</div>
+                        <span class="text-[11px] text-slate-400 mt-1">Propagating Mode 2 Isolation</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">QC Dispersion Gate</span>
+                        <div class="text-2xl sm:text-3xl font-black text-amber-400 mt-2">&lt; 0.10</div>
+                        <span class="text-[11px] text-slate-400 mt-1">Triple-Point Dispersion (&delta;<sub>TP</sub>)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="campaigns" class="space-y-6">
+            <div class="border-l-4 border-teal-500 pl-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">1. Field Campaign Comparative Analysis</h2>
+                <p class="text-xs sm:text-sm text-slate-400">Evaluating tower spatial resolution, vertical level density (N<sub>z</sub>), and GSPT inversion feasibility.</p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                GSPT transition inversions depend on high vertical tower resolution to construct non-uniform spatial derivative matrices (D1, D2). While multi-level masts like CASES-99 (55m, N<sub>z</sub>=7) and GABLS3 (200m, N<sub>z</sub>=20) yield full topological stability mappings, sparse arrays like SHEBA (2 levels) trigger a <em>Bypassed Guard</em> due to stencil under-determination.
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                        <span>📊</span> Tower Height & Vertical Grid Density Comparison
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="campaignChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="space-y-4 flex flex-col justify-between">
+                    <div class="bg-slate-800/60 p-5 rounded-xl border border-teal-500/30">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-teal-300">CASES-99 (Kansas Prairie)</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300">VERIFIED</span>
+                        </div>
+                        <p class="text-xs text-slate-300">55m tower with 7 non-uniform heights (1.5m to 55m). Ideal for capturing nocturnal Low-Level Jet nose formation near 30m.</p>
+                    </div>
+
+                    <div class="bg-slate-800/60 p-5 rounded-xl border border-sky-500/30">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-sky-300">GABLS3 (Cabauw Mast)</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300">VERIFIED</span>
+                        </div>
+                        <p class="text-xs text-slate-300">200m meteorological mast. Captures upper boundary layer transitions, nocturnal boundary layer depth, and jet-driven shear erosion.</p>
+                    </div>
+
+                    <div class="bg-slate-800/60 p-5 rounded-xl border border-rose-500/30">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-rose-300">SHEBA (Arctic Ice Pack)</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300">BYPASSED GUARD</span>
+                        </div>
+                        <p class="text-xs text-slate-300">Only 2 vertical levels (2.5m & 10m). Fails minimum spatial stencil requirements (N<sub>z</sub> &ge; 3) for derivative computation.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ceof" class="space-y-6">
+            <div class="border-l-4 border-sky-500 pl-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">2. Complex EOF Wave-Jet Separation Pipeline</h2>
+                <p class="text-xs sm:text-sm text-slate-400">Decomposing velocity anomaly matrices into standing jet modes and propagating internal gravity waves.</p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                Using a self-contained matrix Fourier Hilbert transform, real velocity fields are converted to complex analytic signals z(t) = x(t) + i H[x(t)]. Complex SVD extracts spatial mode amplitudes and vertical phase profiles. Low-amplitude phase noise near the surface is neutralized using an <strong>amplitude-weighted vertical phase gradient metric</strong>.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                        <span>🍩</span> CEOF Mode Variance Share
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Mode 1 captures 91.37% of energy (Standing LLJ), while Mode 2 isolates 8.62% (Propagating Wave).</p>
+                    <div class="chart-container">
+                        <canvas id="ceofVarianceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                        <span>📈</span> Topological Vertical Phase Gradient Profiles (&partial;&theta;/&partial;z)
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Standing Jet Mode 1 exhibits near-zero gradient (0.0054 rad/m), while Wave Mode 2 maintains sloping phase (0.1499 rad/m).</p>
+                    <div class="chart-container">
+                        <canvas id="ceofProfileChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/80 p-6 rounded-xl border border-slate-700 space-y-3">
+                <h4 class="text-sm font-bold text-teal-300 uppercase tracking-wider">Classification Metric Equation</h4>
+                <div class="bg-slate-900 p-4 rounded-lg font-mono text-xs sm:text-sm text-slate-200 overflow-x-auto text-center border border-slate-800">
+                    &nabla;&theta;<sub>weighted</sub> = (&sum;<sub>i=1</sub><sup>N<sub>z</sub></sup> |A(z<sub>i</sub>)| &middot; |&partial;&theta;/&partial;z|<sub>z<sub>i</sub></sub>) / (&sum;<sub>i=1</sub><sup>N<sub>z</sub></sup> |A(z<sub>i</sub>)|)
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs mt-2">
+                    <div class="bg-slate-900/50 p-3 rounded-lg border border-teal-500/20">
+                        <span class="font-bold text-teal-300">Jet Standing Mode Criterion:</span>
+                        <p class="text-slate-400 mt-1">&nabla;&theta;<sub>weighted</sub> &lt; 0.02 rad/m &rarr; Uniform spatial phase, non-propagating shear feature.</p>
+                    </div>
+                    <div class="bg-slate-900/50 p-3 rounded-lg border border-indigo-500/20">
+                        <span class="font-bold text-indigo-300">Propagating Wave Mode Criterion:</span>
+                        <p class="text-slate-400 mt-1">&nabla;&theta;<sub>weighted</sub> &ge; 0.02 rad/m &rarr; Sloping vertical phase, propagating internal gravity wave.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="regularization" class="space-y-6">
+            <div class="border-l-4 border-indigo-500 pl-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">3. Numerical Stability & Singular Value Mitigation</h2>
+                <p class="text-xs sm:text-sm text-slate-400">Preventing runaway cooling bifurcations and division-by-zero quotient singularities near Jet cores.</p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                Under strong nocturnal cooling, the gradient Richardson number Ri = (g/&theta;<sub>v</sub> &middot; &partial;&theta;<sub>v</sub>/&partial;z) / [(&partial;u/&partial;z)<sup>2</sup> + (&partial;v/&partial;z)<sup>2</sup>] suffers from division-by-zero singularities near the LLJ nose where wind shear vanishes (&partial;u/&partial;z &rarr; 0). SBLToolkit.jl applies Tikhonov-Morozov filtering and Zero-Offset Hyperbolic Regularization (Z0HR) to guarantee bounded numerical updates.
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                        <span>🛡️</span> Richardson Number Profile: Raw vs Z0HR Regularized
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Unregularized Ri spikes to infinity at the Jet nose (30m), whereas Z0HR maintains smooth, differentiable stability bounds.</p>
+                    <div class="chart-container">
+                        <canvas id="regularizationChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
+                        <div class="text-xs font-bold text-teal-400 uppercase tracking-wider mb-2">Track A Primitive Regularization</div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Applies Tikhonov-Morozov filtering directly to velocity and potential temperature profiles under a Modified Morozov Discrepancy Principle (MDP). Matches smoothing scale to noise floor &delta;.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
+                        <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Zero-Offset Hyperbolic Scheme (Z0HR)</div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Replaces singular quotient denominators with hyperbolic smoothing operators sqrt(x<sup>2</sup> + &epsilon;<sup>2</sup>). Eliminates division-by-zero without altering physical equilibria.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
+                        <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Tangential Cone Condition</div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Ensures non-linear stability bound &tau;<sub>2</sub> &ge; &tau;<sub>1</sub>(3 + 2&gamma;), guaranteeing a unique regularization parameter &alpha; for non-linear inverse convergence.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="gating" class="space-y-6">
+            <div class="border-l-4 border-amber-500 pl-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">4. Quality Control Gating & GSPT Framework Architecture</h2>
+                <p class="text-xs sm:text-sm text-slate-400">Triple-Point Dispersion QC validation and multi-phase prognostic GSPT integration.</p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                To prevent silent numerical corruption from creating false regime transitions, SBLToolkit.jl enforces a strict Quality Control pipeline using Triple-Point Dispersion (&delta;<sub>TP</sub>) alongside schema adapters (`src/ultra/adapters/`) to sanitize incoming NetCDF tower streams.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-teal-400 font-bold text-sm mb-2">
+                            <span>1️⃣</span> Diffusivity Cutoff Height
+                        </div>
+                        <p class="text-xs text-slate-300">Vertical height where turbulent eddy diffusivity K<sub>m</sub> drops below physical mixing threshold (10<sup>-4</sup> m<sup>2</sup>/s).</p>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-[11px] font-mono text-teal-300">
+                        Marker z_K : K_m(z) &rarr; &epsilon;
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mb-2">
+                            <span>2️⃣</span> TKE Level-Set Height
+                        </div>
+                        <p class="text-xs text-slate-300">Height level where Turbulent Kinetic Energy drops below critical threshold (e.g. e = 0.05 m<sup>2</sup>/s<sup>2</sup>).</p>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-[11px] font-mono text-sky-300">
+                        Marker z_e : TKE(z) = e_crit
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-indigo-400 font-bold text-sm mb-2">
+                            <span>3️⃣</span> TKE Gradient Extremum
+                        </div>
+                        <p class="text-xs text-slate-300">Point of maximum TKE vertical collapse gradient (&partial;e/&partial;z = max), marking active collapse front.</p>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-[11px] font-mono text-indigo-300">
+                        Marker z_grad : max(|&partial;TKE/&partial;z|)
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-teal-900/30 via-slate-800 to-indigo-900/30 p-6 rounded-2xl border border-slate-700/80 space-y-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <span>🔄</span> GSPT Evolutionary Phases: Diagnostic Mapping to Prognostic Closure
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300">PHASE 1</span>
+                        <h4 class="text-xs font-bold text-slate-200">Data Cleansing & Regularization</h4>
+                        <p class="text-[11px] text-slate-400">Planar fit rotations, u<sub>*</sub> flatline replacements (0.3 m/s baseline), and Track A primitive regularization.</p>
+                    </div>
+                    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300">PHASE 2</span>
+                        <h4 class="text-xs font-bold text-slate-200">Diagnostic Inversion (R<sub>coord</sub>)</h4>
+                        <p class="text-[11px] text-slate-400">Maps profiles onto topological manifold coordinate R<sub>coord</sub> to distinguish shear mixing from laminar collapse.</p>
+                    </div>
+                    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300">PHASE 3</span>
+                        <h4 class="text-xs font-bold text-slate-200">Prognostic Closure Integration</h4>
+                        <p class="text-[11px] text-slate-400">Embeds R<sub>coord</sub> manifold geometries into 1.5-order & 2nd-order turbulence models for jet shear revival prediction.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-950 border-t border-slate-800 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 space-y-2">
+            <p>SBLToolkit.jl & Geometric Surface Pattern Theory (GSPT) Processing Framework</p>
+            <p>Generated Single-Page Application &bull; Built with Chart.js & Tailwind CSS &bull; Canvas Rendered</p>
+        </div>
+    </footer>
+
+    <script>
+        function wrapLabel(label) {
+            if (typeof label !== 'string') return label;
+            if (label.length <= 16) return label;
+            const words = label.split(' ');
+            const lines = [];
+            let currentLine = '';
+            words.forEach(word => {
+                if ((currentLine + word).length > 16) {
+                    if (currentLine.trim()) lines.push(currentLine.trim());
+                    currentLine = word + ' ';
+                } else {
+                    currentLine += word + ' ';
+                }
+            });
+            if (currentLine.trim()) lines.push(currentLine.trim());
+            return lines;
+        }
+
+        const sharedTooltipConfig = {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            const item = tooltipItems[0];
+                            let label = item.chart.data.labels[item.dataIndex];
+                            if (Array.isArray(label)) {
+                                return label.join(' ');
+                            } else {
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const campaignLabelsRaw = ['CASES-99 (Kansas Prairie)', 'GABLS3 (Cabauw Mast)', 'SHEBA (Arctic Pack)'];
+            const campaignLabelsWrapped = campaignLabelsRaw.map(wrapLabel);
+            
+            new Chart(document.getElementById('campaignChart'), {
+                type: 'bar',
+                data: {
+                    labels: campaignLabelsWrapped,
+                    datasets: [
+                        {
+                            label: 'Vertical Levels (Nz)',
+                            data: [7, 20, 2],
+                            backgroundColor: '#14b8a6',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Max Height z (m)',
+                            data: [55, 200, 10],
+                            backgroundColor: '#38bdf8',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', font: { size: 12 } } },
+                        ...sharedTooltipConfig.plugins
+                    }
+                }
+            });
+
+            const ceofVarianceLabelsRaw = ['Mode 1: Standing LLJ', 'Mode 2: Propagating IGW'];
+            const ceofVarianceLabelsWrapped = ceofVarianceLabelsRaw.map(wrapLabel);
+
+            new Chart(document.getElementById('ceofVarianceChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ceofVarianceLabelsWrapped,
+                    datasets: [{
+                        data: [91.37, 8.62],
+                        backgroundColor: ['#38bdf8', '#6366f1'],
+                        borderWidth: 0,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 12 } } },
+                        ...sharedTooltipConfig.plugins
+                    }
+                }
+            });
+
+            const heightLabels = ['1.5m', '5.0m', '10.0m', '20.0m', '30.0m', '45.0m', '55.0m'];
+
+            new Chart(document.getElementById('ceofProfileChart'), {
+                type: 'line',
+                data: {
+                    labels: heightLabels,
+                    datasets: [
+                        {
+                            label: 'Mode 1 (Standing Jet)',
+                            data: [0.0908, 0.0439, 0.0062, -0.0020, -0.0013, 0.0099, 0.0237],
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Mode 2 (Propagating Wave)',
+                            data: [-0.1476, -0.1436, -0.1365, -0.1713, -0.1799, -0.1370, -0.1493],
+                            borderColor: '#818cf8',
+                            backgroundColor: 'rgba(129, 140, 248, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                        y: { title: { display: true, text: 'Phase Gradient (rad/m)', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1' } },
+                        ...sharedTooltipConfig.plugins
+                    }
+                }
+            });
+
+            const regHeights = ['5m', '15m', '25m', '30m (Nose)', '35m', '45m', '55m'];
+
+            new Chart(document.getElementById('regularizationChart'), {
+                type: 'line',
+                data: {
+                    labels: regHeights,
+                    datasets: [
+                        {
+                            label: 'Unregularized Ri (Singular Spike)',
+                            data: [0.15, 0.22, 0.85, 12.50, 0.90, 0.35, 0.28],
+                            borderColor: '#f43f5e',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#f43f5e'
+                        },
+                        {
+                            label: 'Z0HR Regularized Ri (Smooth)',
+                            data: [0.15, 0.22, 0.48, 0.62, 0.51, 0.35, 0.28],
+                            borderColor: '#14b8a6',
+                            borderWidth: 3,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#14b8a6',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                        y: { title: { display: true, text: 'Richardson Number (Ri)', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1' } },
+                        ...sharedTooltipConfig.plugins
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
