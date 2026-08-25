@@ -27,6 +27,15 @@ using .DatasetRegistry
 
 export discover_campaign_trajectories
 
+# GSPT Phase 2 Integration
+# --
+include("GSPTPhase2.jl")
+using .GSPTPhase2
+
+export GSPTPhase2, ProfileData, CoordinateGeometry, ConstitutiveGeometry,
+    ObservationDiagnostic, DiagnosticResult, DomainMetrics,
+    compute_gspt, compare_tracks, check_tangential_cone
+
 # -------------------------------------------------------------------
 # Include and expose submodules from src/ultra
 # -------------------------------------------------------------------
