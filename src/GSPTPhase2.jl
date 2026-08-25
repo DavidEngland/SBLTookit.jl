@@ -174,7 +174,7 @@ end
 
 # --- 5. Core Computation Engine ---
 function compute_gspt(data::ProfileData; β_m=1.0, β_h=3.0, eps_C=1e-5, S2_min=1e-4,
-    is_observation=false, tke_fraction=0.05)
+    is_observation=false, tke_fraction=0.05, mask_ill_conditioned::Bool=true)
     z = data.z
     n = length(z)
     g, κ = 9.81, 0.40
@@ -243,7 +243,10 @@ function compute_gspt(data::ProfileData; β_m=1.0, β_h=3.0, eps_C=1e-5, S2_min=
     C_coord = Ri_z_gspt_val .* zeta_zz
     Ri_zz_chain_rule = C_const .+ C_coord
 
-    R_coord = [abs(C_const[i]) > eps_C && !ill_conditioned_mask[i] ? C_coord[i] / C_const[i] : NaN for i in 1:n]
+    R_coord = [
+        abs(C_const[i]) > eps_C && (!mask_ill_conditioned || !ill_conditioned_mask[i]) ? C_coord[i] / C_const[i] : NaN
+        for i in 1:n
+    ]
     const_geom = ConstitutiveGeometry(Ri_gspt_val, Ri_z_gspt_val, Ri_zz_chain_rule, C_const, C_coord, R_coord)
 
     closure_residual = Ri_zz_obs_field .- Ri_zz_chain_rule
