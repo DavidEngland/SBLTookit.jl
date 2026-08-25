@@ -1,8 +1,8 @@
 module SBLToolkit
-
 using Dates
 using DataFrames
 using NCDatasets
+using Plots
 using DSP
 using LinearAlgebra
 using Statistics
@@ -30,11 +30,14 @@ export discover_campaign_trajectories
 # GSPT Phase 2 Integration
 # --
 include("GSPTPhase2.jl")
+include("GSPTTimeLoop.jl")
 using .GSPTPhase2
+using .GSPTTimeLoop
 
 export GSPTPhase2, ProfileData, CoordinateGeometry, ConstitutiveGeometry,
     ObservationDiagnostic, DiagnosticResult, DomainMetrics,
-    compute_gspt, compare_tracks, check_tangential_cone
+    compute_gspt, compare_tracks, check_tangential_cone,
+    ingest_netcdf_gspt, plot_gspt_transition
 
 # -------------------------------------------------------------------
 # Include and expose submodules from src/ultra

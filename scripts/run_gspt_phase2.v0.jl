@@ -2,8 +2,8 @@ using Pkg
 const PROJECT_ROOT = normpath(joinpath(@__DIR__, ".."))
 Pkg.activate(PROJECT_ROOT)
 push!(LOAD_PATH, joinpath(PROJECT_ROOT, "src"))
-using SBLToolkit
-using SBLToolkit.GSPTPhase2
+using SBLToolkit, SBLToolkit.GSPTPhase2
+
 using Printf, Statistics, LinearAlgebra
 
 function run_formal_phase2_benchmark()
@@ -11,54 +11,51 @@ function run_formal_phase2_benchmark()
         println(" SBLToolkit.jl: Executing Primitive-Space MDP GSPT Phase 2 Diagnostic Pipeline")
         println("="^100)
 
+        # Cabauw 9-level mast configuration (m)
         z_grid = [2.0, 10.0, 20.0, 40.0, 80.0, 120.0, 140.0, 180.0, 200.0]
+        n = length(z_grid)
 
-        # Track 1: Observations (with noise)
-        u_obs = [2.1, 5.2, 8.1, 12.3, 15.1, 15.01, 14.2, 11.1, 9.0]
-        v_obs = [0.2, 0.5, 0.8, 1.2, 1.5, 1.50, 1.4, 1.1, 0.9]
-        th_obs = 285.0 .+ 0.04 .* z_grid
-        wth_obs = -0.015 .* exp.(-z_grid ./ 50.0)
-        uw_obs = -0.05 .* exp.(-z_grid ./ 60.0)
-        vw_obs = -0.01 .* exp.(-z_grid ./ 60.0)
-        tke_obs = 0.2 .* exp.(-z_grid ./ 40.0) .+ 0.01
-        Km_obs = 0.5 .* (z_grid ./ 10.0) .* exp.(-(z_grid ./ 30.0) .^ 2) .+ 0.001
+        # Synthetic profile with Low-Level Jet (LLJ) nose at 120m (S^2 -> 0)
+        u_base = [2.0, 5.0, 8.0, 12.0, 15.0, 15.01, 14.2, 11.0, 9.0] # LLJ nose around 120m
+        v_base = [0.2, 0.5, 0.8, 1.2, 1.5, 1.50, 1.4, 1.1, 0.9]
+        th_base = 285.0 .+ 0.04 .* z_grid
+        wth_base = -0.015 .* exp.(-z_grid ./ 50.0)
+        uw_base = -0.05 .* exp.(-z_grid ./ 60.0)
+        vw_base = -0.01 .* exp.(-z_grid ./ 60.0)
+        tke_base = 0.2 .* exp.(-z_grid ./ 40.0) .+ 0.01
+        Km_base = 0.5 .* (z_grid ./ 10.0) .* exp.(-(z_grid ./ 30.0) .^ 2) .+ 0.001
 
-        # Track 2: SCM (Over-smoothed gradient, lower shear near surface)
-        u_scm = [3.5, 6.8, 9.5, 12.8, 14.8, 15.00, 14.5, 11.8, 9.5]
-        v_scm = copy(v_obs)
-        th_scm = 285.0 .+ 0.035 .* z_grid
-        wth_scm = -0.010 .* exp.(-z_grid ./ 70.0) # Over-smoothed heat flux decay
+        # Simulated observational noise (5 cm/s on wind, 0.05 K on temp)
+        obs_data = ProfileData(z_grid, u_base, v_base, th_base, wth_base,
+                uw_base, vw_base, tke_base, Km_base,
+                0.05, 0.05, 0.05, 0.01)
+        obs_res = GSPTPhase2.compute_gspt(obs_data; is_observation=true, S2_min=1e-3)
 
-        # Track 3: LES (High fidelity match to Obs)
-        u_les = [2.0, 5.0, 8.0, 12.0, 15.0, 15.01, 14.2, 11.0, 9.0]
-        v_les = copy(v_obs)
-        th_les = copy(th_obs)
-        wth_les = copy(wth_obs)
+        # SCM profile (Over-smoothed wind gradient)
+        scm_u = [2.0, 4.0, 6.0, 9.0, 12.0, 13.5, 14.0, 13.0, 11.0]
+        scm_data = ProfileData(z_grid, scm_u, v_base, th_base, wth_base,
+                uw_base, vw_base, tke_base, Km_base, 0.0, 0.0, 0.0, 0.0)
+        scm_res = GSPTPhase2.compute_gspt(scm_data; is_observation=false, S2_min=1e-3)
 
-        # Ingest Profile Data
-        obs_data = ProfileData(z_grid, u_obs, v_obs, th_obs, wth_obs, uw_obs, vw_obs, tke_obs, Km_obs, 0.05, 0.05, 0.05, 0.01)
-        scm_data = ProfileData(z_grid, u_scm, v_scm, th_scm, wth_scm, uw_obs, vw_obs, tke_obs, Km_obs, 0.00, 0.00, 0.00, 0.00)
-        les_data = ProfileData(z_grid, u_les, v_les, th_les, wth_les, uw_obs, vw_obs, tke_obs, Km_obs, 0.00, 0.00, 0.00, 0.00)
+        # LES profile
+        les_data = ProfileData(z_grid, u_base, v_base, th_base, wth_base,
+                uw_base, vw_base, tke_base, Km_base, 0.0, 0.0, 0.0, 0.0)
+        les_res = GSPTPhase2.compute_gspt(les_data; is_observation=false, S2_min=1e-3)
 
-        # Evaluate GSPT Pipeline
-        obs_res = compute_gspt(obs_data; is_observation=true, S2_min=1e-3)
-        scm_res = compute_gspt(scm_data; is_observation=false, S2_min=1e-3)
-        les_res = compute_gspt(les_data; is_observation=false, S2_min=1e-3)
-
-        # Tangential Cone Condition Check
-        x1 = [u_obs; v_obs; th_obs]
+        # Tangential Cone Condition Check across SBL perturbation
+        x1 = [u_base; v_base; th_base]
         x2 = x1 .+ 0.02 .* randn(length(x1))
         D1_dim, _ = GSPTPhase2.build_operators(z_grid)
         gamma_val = GSPTPhase2.check_tangential_cone(x1, x2, 9.81, 285.0, D1_dim)
 
-        # Compare Tracks
-        metrics = compare_tracks(obs_res, scm_res, les_res)
+        # Track comparison
+        metrics = GSPTPhase2.compare_tracks(obs_res, scm_res, les_res)
 
-        # Output Formatting
+        # Print Detailed Diagnostics
         @printf("%-6s | %-12s | %-12s | %-12s | %-12s | %-12s\n",
                 "z (m)", "R_coord(Obs)", "R_coord(SCM)", "B_R(SCM)", "Δ_close(Obs)", "τ_reg_sens")
         println("-"^95)
-        for i in 1:length(z_grid)
+        for i in 1:n
                 flag = obs_res.obs_diag.ill_conditioned_mask[i] ? "*" : " "
                 @printf("%6.1f%s| %12.4f | %12.4f | %12.4f | %12.6f | %12.6f\n",
                         z_grid[i], flag, obs_res.const_geom.R_coord[i], scm_res.const_geom.R_coord[i],

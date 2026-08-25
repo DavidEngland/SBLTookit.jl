@@ -98,12 +98,16 @@ function solve_morozov(y_obs::Vector{Float64}, R_tilde::Matrix{Float64}, σ::Flo
     n = length(y_obs)
     σ == 0.0 && return copy(y_obs)
     target = n * (σ^2)
-    λ_grid = 10.0 .^ range(-10, 2, length=2000)
+
+    # Stabilize matrix conditioning for inversion
+    R_stable = R_tilde + 1e-8 * I(n)
+
+    λ_grid = 10.0 .^ range(-8, 2, length=2000)
     best_λ = λ_grid[1]
     min_diff = Inf
 
     for λ in λ_grid
-        y_s = (I(n) + λ .* R_tilde) \ y_obs
+        y_s = (I(n) + λ .* R_stable) \ y_obs
         res = sum((y_s .- y_obs) .^ 2)
         diff = abs(res - target)
         if diff < min_diff
@@ -111,7 +115,7 @@ function solve_morozov(y_obs::Vector{Float64}, R_tilde::Matrix{Float64}, σ::Flo
             best_λ = λ
         end
     end
-    return (I(n) + best_λ .* R_tilde) \ y_obs
+    return (I(n) + best_λ .* R_stable) \ y_obs
 end
 
 # --- 3. Tangential Cone Condition Evaluator ---
