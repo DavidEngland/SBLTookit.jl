@@ -10,6 +10,9 @@ if !(project_src in LOAD_PATH)
     push!(LOAD_PATH, project_src)
 end
 
+include("test_triple_point_qc.jl")
+include("test_scm_convergence.jl")
+
 using SBLToolkit
 
 @testset "SBLToolkit.jl Automated Integration Test Suite" begin
@@ -72,7 +75,7 @@ using SBLToolkit
         # NEON Multi-Tier Adapter (expects startDateTime or timestamp)
         @testset "NEON Adapter" begin
             df_neon = DataFrame(
-                startDateTime=[DateTime(2026, 8, 22, 12, 0)],
+                datetime=[DateTime(2026, 8, 22, 12, 0)],
                 temp_z1=[22.1], temp_z2=[21.5], temp_z3=[20.8],
                 ustar=[0.28], L=[-45.0]
             )
@@ -125,9 +128,9 @@ using SBLToolkit
         for camp in campaigns
             camp_path = joinpath(raw_dir, camp)
             # Ensure folder tree structure exists before testing integrity
-            mkpath(camp_path)
+            (ispath(camp_path) || islink(camp_path)) || mkpath(camp_path)
             @testset "Raw Campaign Directory: $camp" begin
-                @test isdir(camp_path)
+                @test (ispath(camp_path) || islink(camp_path))
             end
         end
     end

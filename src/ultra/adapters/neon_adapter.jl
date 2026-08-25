@@ -26,7 +26,11 @@ function extract_neon_profile(
     available = filter(c -> c in names(df), col_names)
     length(available) == n_levels || error("Missing expected NEON profile columns. Found: $(available)")
 
-    datetime_col = :datetime in names(df) ? :datetime : (:timestamp in names(df) ? :timestamp : nothing)
+    name_syms = Symbol.(names(df))
+    datetime_col = :datetime in name_syms ? :datetime :
+        (:timestamp in name_syms ? :timestamp :
+        (:startDateTime in name_syms ? :startDateTime :
+        (:endDateTime in name_syms ? :endDateTime : nothing)))
     datetime_col === nothing && error("Expected a datetime/timestamp column in NEON input")
 
     profiles = MeteorologicalProfile[]
@@ -86,7 +90,11 @@ function extract_neon_observations(
     available = filter(c -> c in names(df), col_names)
     length(available) == n_levels || error("Missing expected NEON profile columns. Found: $(available)")
 
-    datetime_col = :datetime in names(df) ? :datetime : (:timestamp in names(df) ? :timestamp : nothing)
+    name_syms = Symbol.(names(df))
+    datetime_col = :datetime in name_syms ? :datetime :
+        (:timestamp in name_syms ? :timestamp :
+        (:startDateTime in name_syms ? :startDateTime :
+        (:endDateTime in name_syms ? :endDateTime : nothing)))
     datetime_col === nothing && error("Expected a datetime/timestamp column in NEON input")
 
     observations = StandardizedBLObservation[]

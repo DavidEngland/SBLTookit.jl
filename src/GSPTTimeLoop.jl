@@ -179,6 +179,42 @@ function synthesize_flux_decay_profiles!(flux_mat::Matrix{Float64}, z::Vector{Fl
     return flux_mat
 end
 
+"""
+    compute_triple_point_dispersion(z, Km, e; tke_fraction=0.05)
+
+Computes non-dimensional triple-point dispersion for a single time-column profile:
+- z_K: diffusivity cutoff marker
+- z_e: TKE level-set marker
+- z_ez: strongest TKE gradient marker
+"""
+function compute_triple_point_dispersion(z::Vector{Float64}, Km::Vector{Float64}, e::Vector{Float64}; tke_fraction::Float64=0.05)
+    valid_mask = isfinite.(z) .& isfinite.(Km) .& isfinite.(e)
+    if count(valid_mask) < 3
+        return NaN
+    end
+
+    z_v = z[valid_mask]
+    Km_v = Km[valid_mask]
+    e_v = e[valid_mask]
+
+    H_sbl = maximum(z_v) - minimum(z_v)
+    H_sbl > 0.0 || return NaN
+
+    e_min = minimum(e_v) + tke_fraction * (maximum(e_v) - minimum(e_v))
+    idx_e = argmin(abs.(e_v .- e_min))
+    z_e = z_v[idx_e]
+
+    Km_min = minimum(Km_v) + tke_fraction * (maximum(Km_v) - minimum(Km_v))
+    idx_K = argmin(abs.(Km_v .- Km_min))
+    z_K = z_v[idx_K]
+
+    de_dz = abs.(diff(e_v) ./ diff(z_v))
+    z_ez_mid = (z_v[1:end-1] .+ z_v[2:end]) ./ 2.0
+    z_ez = z_ez_mid[argmax(de_dz)]
+
+    return (max(z_K, z_e, z_ez) - min(z_K, z_e, z_ez)) / H_sbl
+end
+
 # ---------------------------------------------------------------------------
 # Layer 2: Physical & Thermodynamic Normalization
 # ---------------------------------------------------------------------------
@@ -385,7 +421,7 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
     flux_convention::Symbol=:auto, rho_cp::Float64=RHO_CP, cooling_flux_sign::Symbol=:negative,
     nocturnal_only::Bool=true, use_threads::Bool=false, debug_audit::Bool=false,
     mask_ill_conditioned_in_solver::Bool=true, synthesize_missing_fluxes::Bool=false,
-    h_sbl_diagnostic::Float64=200.0)
+    h_sbl_diagnostic::Float64=200.0, dispersion_qc_max::Float64=0.10)
 
     NCDataset(nc_path, "r") do ds
         z_raw = get_nc_var(ds, ["zf", "zt", "z", "height", "heights", "lev", "level", "alt", "z_m"]; required=false)
@@ -491,9 +527,12 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
         mask_missing = fill(false, N_z, N_t)
         mask_nocturnal = fill(false, N_z, N_t)
         mask_ill_conditioned = fill(false, N_z, N_t)
+        mask_dispersion_qc = fill(false, N_z, N_t)
+        delta_tp = fill(NaN, N_t)
 
         skipped_nocturnal_filter = Threads.Atomic{Int}(0)
         skipped_missing_profiles = Threads.Atomic{Int}(0)
+        skipped_dispersion_qc = Threads.Atomic{Int}(0)
         solved_columns = Threads.Atomic{Int}(0)
         solved_columns_with_ill = Threads.Atomic{Int}(0)
         masked_ill_points = Threads.Atomic{Int}(0)
@@ -506,7 +545,9 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
                 z=z, time=time_raw, R_coord=R_coord_2d, C_const=C_const_2d,
                 C_coord=C_coord_2d, delta_closure=delta_clos_2d,
                 mask_missing=fill(true, N_z, N_t), mask_nocturnal=mask_nocturnal,
-                mask_ill_conditioned=mask_ill_conditioned
+                mask_ill_conditioned=mask_ill_conditioned,
+                mask_dispersion_qc=mask_dispersion_qc,
+                delta_tp=delta_tp
             )
         end
 
@@ -517,6 +558,18 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
             mask_nocturnal[:, t] .= is_noct
             if nocturnal_only && !is_noct
                 Threads.atomic_add!(skipped_nocturnal_filter, 1)
+                return nothing
+            end
+
+            Km_col = view(Km_mat, :, t)
+            e_col = view(tke_mat, :, t)
+            δ_TP = compute_triple_point_dispersion(z, Km_col, e_col)
+            delta_tp[t] = δ_TP
+            if !isfinite(δ_TP) || δ_TP >= dispersion_qc_max
+                mask_dispersion_qc[:, t] .= true
+                mask_ill_conditioned[:, t] .= true
+                R_coord_2d[:, t] .= NaN
+                Threads.atomic_add!(skipped_dispersion_qc, 1)
                 return nothing
             end
 
@@ -616,11 +669,13 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
                 cooling_flux_sign=cooling_flux_sign
                 synthesize_missing_fluxes=synthesize_missing_fluxes
                 h_sbl_diagnostic=h_sbl_diagnostic
+                dispersion_qc_max=dispersion_qc_max
                 sfc_flux_valid=n_sfc_valid
                 sfc_flux_negative=n_sfc_neg
                 sfc_flux_positive=n_sfc_pos
                 skipped_nocturnal_filter=skipped_nocturnal_filter[]
                 skipped_missing_profiles=skipped_missing_profiles[]
+                skipped_dispersion_qc=skipped_dispersion_qc[]
                 solved_columns=solved_columns[]
                 solved_partial_profile_columns=solved_partial_profile_columns[]
                 solved_columns_with_ill_conditioning=solved_columns_with_ill[]
@@ -636,7 +691,9 @@ function ingest_netcdf_gspt(nc_path::String; S2_min=1e-3, σ_u=0.05, σ_v=0.05, 
             z=z, time=time_raw, R_coord=R_coord_2d, C_const=C_const_2d,
             C_coord=C_coord_2d, delta_closure=delta_clos_2d,
             mask_missing=mask_missing, mask_nocturnal=mask_nocturnal,
-            mask_ill_conditioned=mask_ill_conditioned
+            mask_ill_conditioned=mask_ill_conditioned,
+            mask_dispersion_qc=mask_dispersion_qc,
+            delta_tp=delta_tp
         )
     end
 end

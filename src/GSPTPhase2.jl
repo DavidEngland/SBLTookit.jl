@@ -3,7 +3,8 @@ module GSPTPhase2
 using LinearAlgebra, Statistics
 
 export ProfileData, CoordinateGeometry, ConstitutiveGeometry, ObservationDiagnostic,
-    DiagnosticResult, DomainMetrics, compute_gspt, compare_tracks, check_tangential_cone
+    DiagnosticResult, DomainMetrics, compute_gspt, compare_tracks, check_tangential_cone,
+    compute_transition_coupling
 
 # --- 1. Data Structures ---
 struct ProfileData
@@ -45,6 +46,10 @@ struct ObservationDiagnostic
     closure_residual::Vector{Float64}# Δ_closure = Ri_zz_obs - Ri_zz_gspt
     ill_conditioned_mask::Vector{Bool} # True where S^2 <= S^2_min
     grid_cond_number::Float64       # κ(R_tilde) = λ_max / λ_min of discretization operator
+    transition_height::Float64
+    triple_point_midpoint::Float64
+    coupling_error::Float64
+    curvature_artifact_mask::Vector{Bool}
 end
 
 struct DiagnosticResult
@@ -172,9 +177,78 @@ function compute_c_tp(z::Vector{Float64}, tke::Vector{Float64}, Km::Vector{Float
     return (maximum(pts) - minimum(pts)) / H_SBL
 end
 
+"""
+    compute_transition_coupling(z, R_coord, tke, Km, zeta_zz; tke_fraction=0.05, coupling_threshold_frac=0.05)
+
+Computes alignment between mathematical transition height (R_coord zero crossing)
+and physical triple-point midpoint. If misalignment exceeds a fraction of H_SBL,
+the strongest coordinate-curvature extremum is flagged as a stencil artifact for
+downstream feature extraction filters.
+"""
+function compute_transition_coupling(z::Vector{Float64}, R_coord::Vector{Float64}, tke::Vector{Float64},
+    Km::Vector{Float64}, zeta_zz::Vector{Float64}; tke_fraction::Float64=0.05,
+    coupling_threshold_frac::Float64=0.05)
+    n = length(z)
+    H_sbl = maximum(z) - minimum(z)
+    curvature_artifact_mask = falses(n)
+
+    valid_tp = isfinite.(z) .& isfinite.(tke) .& isfinite.(Km)
+    if count(valid_tp) < 3 || !(H_sbl > 0.0)
+        return (transition_height=NaN, triple_point_midpoint=NaN, coupling_error=NaN,
+            curvature_artifact_mask=curvature_artifact_mask)
+    end
+
+    z_v = z[valid_tp]
+    tke_v = tke[valid_tp]
+    Km_v = Km[valid_tp]
+
+    e_min = minimum(tke_v) + tke_fraction * (maximum(tke_v) - minimum(tke_v))
+    z_e = z_v[argmin(abs.(tke_v .- e_min))]
+
+    Km_min = minimum(Km_v) + tke_fraction * (maximum(Km_v) - minimum(Km_v))
+    z_K = z_v[argmin(abs.(Km_v .- Km_min))]
+
+    de_dz = abs.(diff(tke_v) ./ diff(z_v))
+    z_ez_mid = (z_v[1:end-1] .+ z_v[2:end]) ./ 2.0
+    z_ez = z_ez_mid[argmax(de_dz)]
+    z_tp = (z_K + z_e + z_ez) / 3.0
+
+    crossings = Float64[]
+    for i in 1:(n - 1)
+        r1 = R_coord[i]
+        r2 = R_coord[i + 1]
+        if !isfinite(r1) || !isfinite(r2)
+            continue
+        end
+        if r1 == 0.0
+            push!(crossings, z[i])
+        elseif r2 == 0.0
+            push!(crossings, z[i + 1])
+        elseif signbit(r1) != signbit(r2)
+            w = abs(r1) / (abs(r1) + abs(r2))
+            push!(crossings, z[i] + w * (z[i + 1] - z[i]))
+        end
+    end
+
+    z_trans = isempty(crossings) ? NaN : crossings[argmin(abs.(crossings .- z_tp))]
+    Δz_coupling = isfinite(z_trans) ? abs(z_trans - z_tp) : NaN
+
+    if !isfinite(Δz_coupling) || Δz_coupling > coupling_threshold_frac * H_sbl
+        finite_idx = findall(isfinite, zeta_zz)
+        if !isempty(finite_idx)
+            local_idx = argmax(abs.(zeta_zz[finite_idx]))
+            curvature_artifact_mask[finite_idx[local_idx]] = true
+        end
+    end
+
+    return (transition_height=z_trans, triple_point_midpoint=z_tp, coupling_error=Δz_coupling,
+        curvature_artifact_mask=curvature_artifact_mask)
+end
+
 # --- 5. Core Computation Engine ---
 function compute_gspt(data::ProfileData; β_m=1.0, β_h=3.0, eps_C=1e-5, S2_min=1e-4,
-    is_observation=false, tke_fraction=0.05, mask_ill_conditioned::Bool=true)
+    is_observation=false, tke_fraction=0.05, mask_ill_conditioned::Bool=true,
+    coupling_threshold_frac::Float64=0.05)
     z = data.z
     n = length(z)
     g, κ = 9.81, 0.40
@@ -252,8 +326,20 @@ function compute_gspt(data::ProfileData; β_m=1.0, β_h=3.0, eps_C=1e-5, S2_min=
     closure_residual = Ri_zz_obs_field .- Ri_zz_chain_rule
     tau_truncation = (D2_dim * Ri_gspt_val) .- Ri_zz_chain_rule
 
+    coupling = compute_transition_coupling(
+        z,
+        R_coord,
+        data.tke,
+        data.Km,
+        zeta_zz;
+        tke_fraction=tke_fraction,
+        coupling_threshold_frac=coupling_threshold_frac
+    )
+
     obs_diag = ObservationDiagnostic(Ri_obs_field, Ri_zz_obs_field, tau_truncation,
-        tau_reg_sens, closure_residual, ill_conditioned_mask, grid_cond_number)
+        tau_reg_sens, closure_residual, ill_conditioned_mask, grid_cond_number,
+        coupling.transition_height, coupling.triple_point_midpoint,
+        coupling.coupling_error, coupling.curvature_artifact_mask)
 
     C_TP = compute_c_tp(z, data.tke, data.Km, D1_dim; tke_fraction=tke_fraction)
 
