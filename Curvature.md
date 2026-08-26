@@ -1,5 +1,7 @@
 # Height-Resolved Curvature Decomposition: Separating Real Stability Curvature from Coordinate Effects
 
+**David E. England, PhD** (<dee0001@uah.edu>) and the [UAH](https://www.uah.edu/) [BL Team](https://www.nsstc.uah.edu/nsstc/)
+
 The 2D contour diagnostic panel demonstrates that sharp vertical profile features near the critical Richardson number ($Ri_c \approx 0.20$) often stem from coordinate stretching rather than purely local thermodynamic phase changes. When turbulent flux varies with height, the local Obukhov length scale $L(z)$ distorts the vertical coordinate frame.
 
 We decompose the total profile curvature of $Ri(z)$ into distinct physical and numerical components:
@@ -15,11 +17,13 @@ $$Ri_{zz} = \underbrace{Ri_{\zeta\zeta} \zeta_z^2}_{C_{\text{const}}} + \underbr
 ### Key Physical Insights (12-Hour SBL Cooling Cycle)
 
 * **Near-Surface Cancellation ($z \approx 10\text{ m}$):** During deep stable hours (Hours 6–12), positive coordinate curvature ($C_{\text{coord}} \approx +0.0036\text{ m}^{-2}$) cancels negative stability curvature ($C_{\text{const}} \approx -0.0040\text{ m}^{-2}$). The resulting locally linear profile ($Ri_{zz} \approx -0.0004\text{ m}^{-2}$) hides active, offsetting physical processes.
-* **Noise Suppression & Filtering:** Synthetic sensor jitter ($\sigma_{\text{obs}} = 0.008$) added to $Ri_{\text{obs}}$ is smoothed via Tikhonov regularized differentiation ($\lambda_{\text{reg}} = 5.0$) before operator evaluation, isolating physical signal from observational noise.
+* **Noise Suppression & Filtering:** Synthetic sensor jitter ($\sigma_{\text{obs}} = 0.008$) added to $Ri_{\text{obs}}$ is smoothed via Tikhonov-regularized differentiation ($\lambda_{\text{reg}} = 5.0$) before operator evaluation, isolating physical signal from observational noise.
 
 ---
+
 ![Contours of GSPT Curvature Decomposition](gspt_curvature_contour_v3.png)
 ---
+
 ### 6-Panel Diagnostic Layout
 
 | Panel Position | Variable | Physical / Numerical Interpretation |
@@ -32,6 +36,9 @@ $$Ri_{zz} = \underbrace{Ri_{\zeta\zeta} \zeta_z^2}_{C_{\text{const}}} + \underbr
 | **Bottom Right** | Audit Residual ($E_{\text{error}}$) | Explicit finite-difference discretization residual ($\mathbf{D}_2 Ri_{\text{smooth}} - Ri_{\text{exact}}$). |
 
 ---
+
+## Code:
+
 ```julia
 #!/usr/bin/env julia
 # src/gspt_curvature_contour_v3.jl
@@ -243,3 +250,39 @@ end
 run_test_simulation()
 
 ```
+
+---
+
+The script sets up a complete synthetic boundary layer experiment designed to evaluate how numerical operators handle non-uniform tower grids, flux-divergent jet dynamics, observational jitter, and spatial filtering.
+
+**1. Non-Uniform Stencil Differentiation ($\mathbf{D}_1, \mathbf{D}_2$)**
+
+* **Method:** Computes derivative weights by solving a local Taylor expansion system $\mathbf{A} \mathbf{w} = \mathbf{b}$ for derivative orders $m=1$ ($\mathbf{D}_1$) and $m=2$ ($\mathbf{D}_2$).
+* **Grid Adaptation:** Because CASES-99 tower levels are irregularly spaced, ranging from $1.5\text{ m}$ near the surface to $10\text{ m}$ spacing aloft, standard uniform finite differences introduce severe errors. The code applies 3-point centered stencils on interior nodes and one-sided 3-point stencils at the top and bottom boundaries.
+
+**2. Synthetic Low-Level Jet (LLJ) Signature**
+
+* **Mechanism:** Prescribes a synthetic Obukhov length field $L(z,t)$ whose vertical structure mimics the stability signature associated with a developing nocturnal LLJ, modulated over the 12-hour cooling period:
+
+$$L(z, t) = L_0 \left[1 - \left(0.1 + 0.35 \frac{t}{12}\right) \sin\left(\frac{\pi z}{60}\right)\right]$$
+
+* **Physical Effect:** Produces a $Ri(z)$ profile with the curvature signature typical of a developing nocturnal LLJ nose around $z \approx 30\text{–}45\text{ m}$. This introduces vertical flux divergence ($\zeta_{zz} \neq 0$), which generates the positive coordinate curvature ($C_{\text{coord}}$) that competes with surface cooling ($C_{\text{const}}$).
+
+**3. Observational Noise Jitter**
+
+* **Formula:** $Ri_{\text{obs}}(z, t) = Ri_{\text{exact}}(z, t) + \sigma_{\text{obs}} \sin(t_{\text{idx}} + 1.5 z_{\text{idx}})$
+* **Purpose:** Injects continuous sensor noise ($\sigma_{\text{obs}} = 0.008$) into exact similarity fields. Using deterministic sine offsets mimics high-frequency instrument jitter while keeping the benchmark strictly reproducible across runs.
+
+**4. Tikhonov Regularization (Smoothing)**
+
+* **Operator:** Solves the linear system $(\mathbf{I} + \lambda_{\text{reg}} \mathbf{D}_2^T \mathbf{D}_2) Ri_{\text{smooth}} = Ri_{\text{obs}}$ using regularization parameter $\lambda_{\text{reg}} = 5.0$.
+* **Function:** Taking raw numerical derivatives of noisy data catastrophically amplifies high-frequency jitter. The curvature penalty term ($\mathbf{D}_2^T \mathbf{D}_2$) smooths $Ri_{\text{obs}}$ prior to second differentiation, allowing the audit residual $E_{\text{error}}$ to isolate discretization errors rather than sensor noise.
+
+---
+
+### Quick Parameter Tuning Guide
+
+* **Change Tower Levels (`z_tower`):** Modify the values inside `[1.5, 5.0, ...]` to match actual sensor heights (e.g., add `70.0` or `100.0` for taller boundary layer masts).
+* **Adjust SBL Regimes (`beta_m`, `beta_h`):** Set `beta_m = 4.7` and `beta_h = 4.7` for standard Businger–Dyer formulations, lower to `4.0` for weakly stable conditions agreeing with a classical critical value of`0.25`, or increase to `5.0` or more for strongly stable nocturnal conditions.
+* **Control Noise Jitter (`sigma_obs`):** Increase `sigma_obs` to `0.02` to test high-noise sonic anemometer environments.
+* **Filter Jitter Amplification (`lambda_reg`):** If derivative fields look noisy, increase `lambda_reg` (e.g., `10.0`–`20.0`). If the filter oversmooths physical gradients, reduce it toward `1.0`.
