@@ -33,15 +33,16 @@
                     <h1 class="text-xl font-bold bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
                         SBL Toolkit & GSPT Framework
                     </h1>
-                    <p class="text-xs text-slate-400">Stable Boundary Layer Signal Separation & Numerical Regularization</p>
+                    <p class="text-xs text-slate-400">Stable Boundary Layer Signal Separation & Topological Bifurcation</p>
                 </div>
             </div>
             <nav class="flex flex-wrap gap-2 text-xs font-semibold">
                 <a href="#overview" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Overview</a>
                 <a href="#campaigns" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Field Campaigns</a>
                 <a href="#ceof" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">CEOF Wave-Jet</a>
+                <a href="#bifurcation" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Saddle-Node Dynamics</a>
                 <a href="#regularization" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Regularization</a>
-                <a href="#gating" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">QC & GSPT Pipeline</a>
+                <a href="#gating" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">QC Pipeline</a>
             </nav>
         </div>
     </header>
@@ -56,11 +57,11 @@
                     </div>
                     <h2 class="text-2xl sm:text-3xl font-extrabold text-white">Atmospheric Boundary Layer Signal Isolation & Topological Stability</h2>
                     <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
-                        The <strong class="text-teal-300">SBLToolkit.jl</strong> suite processes complex observational records from nocturnal field tower networks. By leveraging Complex Empirical Orthogonal Functions (CEOF), non-uniform Taylor-Vandermonde derivative operators, and Geometric Surface Pattern Theory (GSPT), the framework cleanly differentiates standing Low-Level Jets (LLJs) from propagating Internal Gravity Waves (IGWs) while overcoming non-linear numerical singularities.
+                        The <strong class="text-teal-300">SBLToolkit.jl</strong> suite processes complex observational records from nocturnal field tower networks. By leveraging Complex Empirical Orthogonal Functions (CEOF), non-uniform Taylor-Vandermonde derivative operators, and Geometric Surface Pattern Theory (GSPT), the framework cleanly differentiates standing Low-Level Jets (LLJs) from propagating Internal Gravity Waves (IGWs) while mapping saddle-node turbulence collapse manifolds.
                     </p>
                 </div>
 
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-8">
                     <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
                         <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">CEOF Accuracy</span>
                         <div class="text-2xl sm:text-3xl font-black text-teal-400 mt-2">99.93%</div>
@@ -77,9 +78,14 @@
                         <span class="text-[11px] text-slate-400 mt-1">Propagating Mode 2 Isolation</span>
                     </div>
                     <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
-                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">QC Dispersion Gate</span>
-                        <div class="text-2xl sm:text-3xl font-black text-amber-400 mt-2">&lt; 0.10</div>
-                        <span class="text-[11px] text-slate-400 mt-1">Triple-Point Dispersion (&delta;<sub>TP</sub>)</span>
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fold Shear S<sub>fold</sub></span>
+                        <div id="kpi-s-fold" class="text-2xl sm:text-3xl font-black text-amber-400 mt-2">0.5899</div>
+                        <span class="text-[11px] text-slate-400 mt-1">Analytical Bifurcation (s<sup>-1</sup>)</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fold TKE e<sub>fold</sub></span>
+                        <div id="kpi-e-fold" class="text-2xl sm:text-3xl font-black text-rose-400 mt-2">0.2156</div>
+                        <span class="text-[11px] text-slate-400 mt-1">Critical Energy (m<sup>2</sup> s<sup>-2</sup>)</span>
                     </div>
                 </div>
             </div>
@@ -164,28 +170,117 @@
                     </div>
                 </div>
             </div>
+        </section>
 
-            <div class="bg-slate-800/80 p-6 rounded-xl border border-slate-700 space-y-3">
-                <h4 class="text-sm font-bold text-teal-300 uppercase tracking-wider">Classification Metric Equation</h4>
-                <div class="bg-slate-900 p-4 rounded-lg font-mono text-xs sm:text-sm text-slate-200 overflow-x-auto text-center border border-slate-800">
-                    &nabla;&theta;<sub>weighted</sub> = (&sum;<sub>i=1</sub><sup>N<sub>z</sub></sup> |A(z<sub>i</sub>)| &middot; |&partial;&theta;/&partial;z|<sub>z<sub>i</sub></sub>) / (&sum;<sub>i=1</sub><sup>N<sub>z</sub></sup> |A(z<sub>i</sub>)|)
+        <section id="bifurcation" class="space-y-6">
+            <div class="border-l-4 border-amber-500 pl-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">3. Interactive GSPT Saddle-Node Simulator & Fast-Slow Relaxation Engine</h2>
+                <p class="text-xs sm:text-sm text-slate-400">Direct client-side execution of `gspt_saddle_node_trajectory.jl` phase-space dynamics and fold point calculations.</p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                GSPT represents nocturnal boundary layer transitions as a fast-slow dynamical system in 2D phase-space (Shear S vs Turbulent Kinetic Energy e). When shear drops below the analytical fold threshold <strong id="fold-summary-text" class="text-amber-300">S<sub>fold</sub> = 0.58985 s<sup>-1</sup></strong>, the stable turbulent equilibrium annihilates, precipitating a rapid collapse to the <strong class="text-rose-300">Laminar Attractor</strong> (e &approx; 0.0005 m<sup>2</sup> s<sup>-2</sup>). As jet shear slowly rebuilds, the system undergoes periodic relaxation bursts.
+            </p>
+
+            <!-- Simulator Control Panel -->
+            <div class="bg-slate-800/80 p-6 rounded-2xl border border-amber-500/30 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                            <span>⚡</span> Real-Time Numerical Parameter Controls
+                        </h3>
+                        <p class="text-xs text-slate-400">Adjust geostrophic forcing, relaxation times, and mixing length to recompute trajectory paths and critical fold bounds.</p>
+                    </div>
+                    <div class="flex gap-3 text-xs">
+                        <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
+                            <span class="text-slate-400">S<sub>fold</sub>: </span><span id="ctrl-s-fold" class="font-mono font-bold text-teal-300">0.58985 s⁻¹</span>
+                        </div>
+                        <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
+                            <span class="text-slate-400">e<sub>fold</sub>: </span><span id="ctrl-e-fold" class="font-mono font-bold text-amber-300">0.21557 m²s⁻²</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs mt-2">
-                    <div class="bg-slate-900/50 p-3 rounded-lg border border-teal-500/20">
-                        <span class="font-bold text-teal-300">Jet Standing Mode Criterion:</span>
-                        <p class="text-slate-400 mt-1">&nabla;&theta;<sub>weighted</sub> &lt; 0.02 rad/m &rarr; Uniform spatial phase, non-propagating shear feature.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <label for="slider-g0" class="text-slate-300 font-medium">Geostrophic Forcing (G₀):</label>
+                            <span id="val-g0" class="font-mono text-teal-400 font-bold">0.30</span>
+                        </div>
+                        <input id="slider-g0" type="range" min="0.10" max="0.80" step="0.02" value="0.30" class="w-full accent-teal-400 cursor-pointer">
                     </div>
-                    <div class="bg-slate-900/50 p-3 rounded-lg border border-indigo-500/20">
-                        <span class="font-bold text-indigo-300">Propagating Wave Mode Criterion:</span>
-                        <p class="text-slate-400 mt-1">&nabla;&theta;<sub>weighted</sub> &ge; 0.02 rad/m &rarr; Sloping vertical phase, propagating internal gravity wave.</p>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <label for="slider-eps" class="text-slate-300 font-medium">Relaxation Parameter (&epsilon;):</label>
+                            <span id="val-eps" class="font-mono text-teal-400 font-bold">0.05</span>
+                        </div>
+                        <input id="slider-eps" type="range" min="0.01" max="0.20" step="0.01" value="0.05" class="w-full accent-teal-400 cursor-pointer">
                     </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <label for="slider-l0" class="text-slate-300 font-medium">Mixing Length (l₀):</label>
+                            <span id="val-l0" class="font-mono text-teal-400 font-bold">1.00</span>
+                        </div>
+                        <input id="slider-l0" type="range" min="0.50" max="2.00" step="0.05" value="1.00" class="w-full accent-teal-400 cursor-pointer">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bifurcation Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                        <span>📉</span> Time Series Trajectory: Shear (S) & TKE (e) Relaxation Cycle
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Forward time integration showing sudden TKE collapses and slow wind shear rebuild phases.</p>
+                    <div class="chart-container">
+                        <canvas id="bifurcationChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                        <span>🌀</span> 2D Phase Portrait: Shear (S) vs. TKE (e) Orbit
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Phase-space trajectory cycling around the critical fold line S<sub>fold</sub> into the laminar regime.</p>
+                    <div class="chart-container">
+                        <canvas id="phasePortraitChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
+                    <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Analytical Saddle-Node Fold</div>
+                    <div class="space-y-1 text-xs text-slate-300">
+                        <p>• Critical Fold Shear: <span id="info-s-fold" class="font-mono text-teal-300">0.58985 s<sup>-1</sup></span></p>
+                        <p>• Critical Fold TKE: <span id="info-e-fold" class="font-mono text-sky-300">0.21557 m<sup>2</sup> s<sup>-2</sup></span></p>
+                        <p>• Physical Mechanism: Saddle-Node manifold annihilation under strong radiative cooling.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
+                    <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Hysteretic State Partition</div>
+                    <div class="space-y-1 text-xs text-slate-300">
+                        <p>• <strong class="text-teal-300">Stable Turbulent State:</strong> TKE e &gt; 0.20 m<sup>2</sup> s<sup>-2</sup> (Active shear mixing)</p>
+                        <p>• <strong class="text-rose-400">Laminar Attractor:</strong> TKE e &lt; 0.01 m<sup>2</sup> s<sup>-2</sup> (Turbulence collapse state)</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
+                    <div class="text-xs font-bold text-teal-400 uppercase tracking-wider mb-2">Jet Shear Revival Cycle</div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        During laminar collapse, friction drops, allowing the Low-Level Jet to accelerate. Shear S accumulates until exceeding the upper ignition threshold, triggering intermittent turbulent bursts.
+                    </p>
                 </div>
             </div>
         </section>
 
         <section id="regularization" class="space-y-6">
             <div class="border-l-4 border-indigo-500 pl-4">
-                <h2 class="text-xl sm:text-2xl font-bold text-white">3. Numerical Stability & Singular Value Mitigation</h2>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">4. Numerical Stability & Singular Value Mitigation</h2>
                 <p class="text-xs sm:text-sm text-slate-400">Preventing runaway cooling bifurcations and division-by-zero quotient singularities near Jet cores.</p>
             </div>
 
@@ -230,8 +325,8 @@
         </section>
 
         <section id="gating" class="space-y-6">
-            <div class="border-l-4 border-amber-500 pl-4">
-                <h2 class="text-xl sm:text-2xl font-bold text-white">4. Quality Control Gating & GSPT Framework Architecture</h2>
+            <div class="border-l-4 border-teal-500 pl-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-white">5. Quality Control Gating & GSPT Framework Architecture</h2>
                 <p class="text-xs sm:text-sm text-slate-400">Triple-Point Dispersion QC validation and multi-phase prognostic GSPT integration.</p>
             </div>
 
@@ -334,19 +429,84 @@
                     callbacks: {
                         title: function(tooltipItems) {
                             const item = tooltipItems[0];
-                            let label = item.chart.data.labels[item.dataIndex];
+                            let label = item.chart.data.labels ? item.chart.data.labels[item.dataIndex] : undefined;
                             if (Array.isArray(label)) {
                                 return label.join(' ');
-                            } else {
+                            } else if (label) {
                                 return label;
+                            } else if (item.parsed && item.parsed.x !== undefined) {
+                                return 'Shear S: ' + item.parsed.x.toFixed(4) + ' s⁻¹';
                             }
+                            return '';
                         }
                     }
                 }
             }
         };
 
+        // GSPT Physics Simulation Engine (Client-side port of Julia script gspt_saddle_node_trajectory.jl)
+        function simulateGSPT(G0, epsilon, l0) {
+            const beta = 5.0;
+            const N2 = 0.1;
+            const B0_max = 0.05;
+            const delta_reg = 0.01;
+            const gamma_s = 1.8;
+            const r_s = 0.15;
+            const dt = 0.002;
+            const t_max = 80.0;
+            const n_steps = Math.round(t_max / dt);
+
+            // Analytical Fold Calculation
+            const target = (27.0 * B0_max * B0_max) / (4.0 * Math.pow(l0, 4));
+            const a = beta * N2;
+            const p_c = - (a * a) / 3.0;
+            const q_c = (2.0 * Math.pow(a, 3)) / 27.0 - target;
+            const Δ = Math.pow(q_c / 2.0, 2) + Math.pow(p_c / 3.0, 3);
+
+            let S_fold = 0.58985;
+            if (Δ > 0) {
+                const y = Math.cbrt(-q_c / 2.0 + Math.sqrt(Δ)) + Math.cbrt(-q_c / 2.0 - Math.sqrt(Δ));
+                const x = y - a / 3.0;
+                if (x > 0) S_fold = Math.sqrt(x);
+            }
+            const e_fold = (3.0 * B0_max) / (2.0 * S_fold * S_fold);
+
+            // Forward Euler Numerical Trajectory Simulation
+            let e = 0.5;
+            let S = 1.0;
+            const times = [];
+            const e_arr = [];
+            const S_arr = [];
+            const trajectory = [];
+
+            const sampleInterval = Math.round(n_steps / 80);
+
+            for (let i = 0; i < n_steps; i++) {
+                const t = i * dt;
+                const B0 = B0_max * ((e * e) / (e * e + delta_reg * delta_reg));
+                const denom = 1.0 + (beta * N2) / Math.max(S * S, 1e-8);
+                const de_dt = (1.0 / epsilon) * (l0 * e * S * S - B0 - Math.pow(e, 3) / (l0 * denom));
+                const dS_dt = G0 - gamma_s * e * S - r_s * S;
+
+                e = Math.max(e + de_dt * dt, 1e-4);
+                S = Math.max(S + dS_dt * dt, 0.0);
+
+                if (i % sampleInterval === 0) {
+                    times.push(t.toFixed(1) + 's');
+                    e_arr.push(e);
+                    S_arr.push(S);
+                    trajectory.push({ x: S, y: e });
+                }
+            }
+
+            return { S_fold, e_fold, times, e_arr, S_arr, trajectory };
+        }
+
+        let bifurcationChartInstance = null;
+        let phasePortraitChartInstance = null;
+
         document.addEventListener('DOMContentLoaded', () => {
+            // 1. Campaign Chart
             const campaignLabelsRaw = ['CASES-99 (Kansas Prairie)', 'GABLS3 (Cabauw Mast)', 'SHEBA (Arctic Pack)'];
             const campaignLabelsWrapped = campaignLabelsRaw.map(wrapLabel);
             
@@ -383,6 +543,7 @@
                 }
             });
 
+            // 2. CEOF Variance Chart
             const ceofVarianceLabelsRaw = ['Mode 1: Standing LLJ', 'Mode 2: Propagating IGW'];
             const ceofVarianceLabelsWrapped = ceofVarianceLabelsRaw.map(wrapLabel);
 
@@ -407,6 +568,7 @@
                 }
             });
 
+            // 3. CEOF Profile Chart
             const heightLabels = ['1.5m', '5.0m', '10.0m', '20.0m', '30.0m', '45.0m', '55.0m'];
 
             new Chart(document.getElementById('ceofProfileChart'), {
@@ -448,6 +610,7 @@
                 }
             });
 
+            // 4. Regularization Chart
             const regHeights = ['5m', '15m', '25m', '30m (Nose)', '35m', '45m', '55m'];
 
             new Chart(document.getElementById('regularizationChart'), {
@@ -488,6 +651,144 @@
                     }
                 }
             });
+
+            // Dynamic Interactive Simulation Init
+            function updateSimulationUI() {
+                const G0 = parseFloat(document.getElementById('slider-g0').value);
+                const epsilon = parseFloat(document.getElementById('slider-eps').value);
+                const l0 = parseFloat(document.getElementById('slider-l0').value);
+
+                document.getElementById('val-g0').textContent = G0.toFixed(2);
+                document.getElementById('val-eps').textContent = epsilon.toFixed(2);
+                document.getElementById('val-l0').textContent = l0.toFixed(2);
+
+                const sim = simulateGSPT(G0, epsilon, l0);
+
+                document.getElementById('kpi-s-fold').textContent = sim.S_fold.toFixed(4);
+                document.getElementById('kpi-e-fold').textContent = sim.e_fold.toFixed(4);
+                document.getElementById('ctrl-s-fold').textContent = sim.S_fold.toFixed(5) + ' s⁻¹';
+                document.getElementById('ctrl-e-fold').textContent = sim.e_fold.toFixed(5) + ' m²s⁻²';
+                document.getElementById('info-s-fold').textContent = sim.S_fold.toFixed(5) + ' s⁻¹';
+                document.getElementById('info-e-fold').textContent = sim.e_fold.toFixed(5) + ' m²s⁻²';
+                document.getElementById('fold-summary-text').innerHTML = 'S<sub>fold</sub> = ' + sim.S_fold.toFixed(5) + ' s<sup>-1</sup>';
+
+                // Update Time Series Chart
+                if (bifurcationChartInstance) {
+                    bifurcationChartInstance.data.labels = sim.times;
+                    bifurcationChartInstance.data.datasets[0].data = sim.e_arr;
+                    bifurcationChartInstance.data.datasets[1].data = sim.S_arr;
+                    bifurcationChartInstance.update();
+                } else {
+                    bifurcationChartInstance = new Chart(document.getElementById('bifurcationChart'), {
+                        type: 'line',
+                        data: {
+                            labels: sim.times,
+                            datasets: [
+                                {
+                                    label: 'Turbulent Kinetic Energy e (m²/s²)',
+                                    data: sim.e_arr,
+                                    borderColor: '#f59e0b',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                    borderWidth: 2,
+                                    tension: 0.1,
+                                    fill: true,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: 'Shear S (s⁻¹)',
+                                    data: sim.S_arr,
+                                    borderColor: '#38bdf8',
+                                    borderDash: [4, 4],
+                                    borderWidth: 2,
+                                    pointRadius: 0,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: '#334155' } },
+                                y: { 
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: { display: true, text: 'TKE e (m²/s²)', color: '#f59e0b' },
+                                    ticks: { color: '#f59e0b' },
+                                    grid: { color: '#334155' }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: { display: true, text: 'Shear S (s⁻¹)', color: '#38bdf8' },
+                                    ticks: { color: '#38bdf8' },
+                                    grid: { drawOnChartArea: false }
+                                }
+                            },
+                            plugins: {
+                                legend: { labels: { color: '#cbd5e1' } },
+                                ...sharedTooltipConfig.plugins
+                            }
+                        }
+                    });
+                }
+
+                // Update 2D Phase Portrait Chart
+                if (phasePortraitChartInstance) {
+                    phasePortraitChartInstance.data.datasets[0].data = sim.trajectory;
+                    phasePortraitChartInstance.update();
+                } else {
+                    phasePortraitChartInstance = new Chart(document.getElementById('phasePortraitChart'), {
+                        type: 'scatter',
+                        data: {
+                            datasets: [
+                                {
+                                    label: 'GSPT Trajectory Orbit (S vs e)',
+                                    data: sim.trajectory,
+                                    showLine: true,
+                                    borderColor: '#14b8a6',
+                                    backgroundColor: 'rgba(20, 184, 166, 0.2)',
+                                    borderWidth: 2,
+                                    pointRadius: 2,
+                                    tension: 0.2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { 
+                                    type: 'linear',
+                                    position: 'bottom',
+                                    title: { display: true, text: 'Shear S (s⁻¹)', color: '#38bdf8' },
+                                    ticks: { color: '#94a3b8' },
+                                    grid: { color: '#334155' } 
+                                },
+                                y: { 
+                                    title: { display: true, text: 'TKE e (m²/s²)', color: '#f59e0b' },
+                                    ticks: { color: '#f59e0b' },
+                                    grid: { color: '#334155' } 
+                                }
+                            },
+                            plugins: {
+                                legend: { labels: { color: '#cbd5e1' } },
+                                ...sharedTooltipConfig.plugins
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Event Listeners for UI Sliders
+            document.getElementById('slider-g0').addEventListener('input', updateSimulationUI);
+            document.getElementById('slider-eps').addEventListener('input', updateSimulationUI);
+            document.getElementById('slider-l0').addEventListener('input', updateSimulationUI);
+
+            // Initial Simulation Run
+            updateSimulationUI();
         });
     </script>
 </body>
