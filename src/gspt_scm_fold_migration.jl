@@ -1,3 +1,4 @@
+#!/usr/bin/env julia
 using LinearAlgebra
 using Printf
 
@@ -19,7 +20,6 @@ end
 function solve_natural_cubic_spline(x::AbstractVector{<:Real}, y::AbstractVector{<:Real})
     n = length(x)
     h = diff(x)
-
     d = ones(n)
     dl = zeros(n - 1)
     du = zeros(n - 1)
@@ -31,7 +31,6 @@ function solve_natural_cubic_spline(x::AbstractVector{<:Real}, y::AbstractVector
         du[i] = h[i] / 6.0
         b[i] = (y[i+1] - y[i]) / h[i] - (y[i] - y[i-1]) / h[i-1]
     end
-
     return Tridiagonal(dl, d, du) \ b
 end
 
@@ -50,76 +49,88 @@ function eval_spline_deriv(x_grid::AbstractVector{<:Real}, y::AbstractVector{<:R
     return -3.0 * Ai * (xip1 - x_val)^2 + 3.0 * Bi * (x_val - xi)^2 - Ci + Di
 end
 
-function find_coordinate_fold(z::AbstractVector{<:Real}, y_lnL::AbstractVector{<:Real}, M::AbstractVector{<:Real})
+# Interval-scanning bracket root finder
+function find_coordinate_folds(z::AbstractVector{<:Real}, y_lnL::AbstractVector{<:Real}, M::AbstractVector{<:Real})
     g(x_val) = x_val * eval_spline_deriv(z, y_lnL, M, x_val) - 1.0
+    folds = Float64[]
+    g_vals = [g(zi) for zi in z]
 
-    a_bound, b_bound = z[1], z[end]
-    ga, gb = g(a_bound), g(b_bound)
-
-    if ga * gb >= 0
-        return NaN
-    end
-
-    for _ in 1:100
-        c_val = 0.5 * (a_bound + b_bound)
-        gc = g(c_val)
-
-        if abs(gc) < 1e-5 || (b_bound - a_bound) < 1e-5
-            return c_val
+    for i in 1:(length(z)-1)
+        if g_vals[i] * g_vals[i+1] <= 0
+            a, b = z[i], z[i+1]
+            ga, gb = g_vals[i], g_vals[i+1]
+            for _ in 1:60
+                c = 0.5 * (a + b)
+                gc = g(c)
+                if abs(gc) < 1e-6 || (b - a) < 1e-6
+                    push!(folds, c)
+                    break
+                end
+                if ga * gc < 0
+                    b, gb = c, gc
+                else
+                    a, ga = c, gc
+                end
+            end
         end
-
-        if ga * gc < 0
-            b_bound, gb = c_val, gc
-        else
-            a_bound, ga = c_val, gc
-        end
     end
+    return folds
+end
 
-    return 0.5 * (a_bound + b_bound)
+# Phase-space 2D Jacobian determinant (det J)
+function compute_min_jacobian_det(e::Vector{Float64}, S::Vector{Float64}, N2::Vector{Float64}, p::SCMParams)
+    min_det = Inf
+    for i in 1:length(e)
+        Ri_val = N2[i] / (S[i]^2)
+        denom_B = (e[i]^2 + p.delta_reg^2)^2
+        dB_de = p.B0_max * (2.0 * e[i] * p.delta_reg^2) / denom_B
+        dDest_de = (3.0 * e[i]^2) / (p.l0 * (1.0 + p.beta * Ri_val))
+
+        F_e = (p.l0 * S[i]^2 - dB_de - dDest_de) / p.epsilon
+        dDest_dS = (-p.beta * e[i]^3 / (p.l0 * (1.0 + p.beta * Ri_val)^2)) * (-2.0 * N2[i] / (S[i]^3))
+        F_S = (2.0 * p.l0 * e[i] * S[i] - dDest_dS) / p.epsilon
+
+        G_e = -p.gamma_s * S[i]
+        G_S = -p.gamma_s * e[i] - p.r_s
+
+        det_J = F_e * G_S - F_S * G_e
+        min_det = min(min_det, det_J)
+    end
+    return min_det
 end
 
 function main()
     p = SCMParams()
     N_z = 50
-    z = [1.0 + (199.0) * (i / N_z)^1.5 for i in 0:(N_z-1)]
+    z = [1.0 + 199.0 * (i / (N_z - 1))^1.5 for i in 0:(N_z-1)]
 
-    t_max = 43200.0
-    dt = 0.1
+    t_max, dt = 43200.0, 0.1
     steps = Int(t_max / dt)
-    n_sub = 5
+    n_sub = 10
     dt_sub = dt / n_sub
 
-    # Pre-allocated state & work arrays
-    e = fill(0.6, N_z)
-    S = fill(1.2, N_z)
-    N2 = zeros(N_z)
-    Ri = zeros(N_z)
-    L_profile = zeros(N_z)
-
+    e, S = fill(0.6, N_z), fill(1.2, N_z)
+    N2, Ri, L_profile = zeros(N_z), zeros(N_z), zeros(N_z)
     log_steps = Int(3600.0 / dt)
 
-    println("="^115)
-    println("                        GSPT 1D SINGLE-COLUMN MODEL COORDINATE FOLD SIMULATION")
-    println("="^115)
-    @printf("%-10s | %-12s | %-12s | %-12s | %-12s | %-12s | %-12s\n",
-        "Time (h)", "Surf Temp(K)", "Inv Depth(m)", "Peak Shear", "Max TKE", "Est z_fold", "Exact z_fold")
-    println("-"^115)
+    println("="^110)
+    println("              GSPT EMERGENT DYNAMICAL FOLD & SADDLE-NODE SIMULATION")
+    println("="^110)
+    @printf("%-8s | %-12s | %-12s | %-12s | %-14s | %-14s\n",
+        "Time (h)", "Surf Temp(K)", "Peak Shear", "Max TKE", "Min det(J)", "Emergent z_fold")
+    println("-"^110)
 
     for step in 1:steps
         t = step * dt
-
         theta_surf = p.theta0 - 5.0 * (t / t_max)
         delta_theta = 2.0 + 8.0 * (t / t_max)
         h_inv = 30.0 + 50.0 * sqrt(t / t_max)
 
-        # 1. Update N2 in-place
         fac = (p.g / p.theta0) * (delta_theta / h_inv)
         @. N2 = fac * exp(-z / h_inv)
 
-        # 2. Integrate slow shear in-place
         @. S = max(S + dt * (p.G0 - p.gamma_s * e * S - p.r_s * S), 1e-4)
 
-        # 3. Fast TKE sub-stepping in-place (Zero allocations)
         @. Ri = N2 / (S^2)
         for _ in 1:n_sub
             for i in 1:N_z
@@ -129,23 +140,31 @@ function main()
             end
         end
 
-        # 4. Hourly Logging
         if step % log_steps == 0
-            a_param = 0.5 + 4.5 * (t / t_max)
-            L0 = 15.0 + 10.0 * (t / t_max)
-            @. L_profile = L0 * exp(a_param * z / 200.0)
+            for i in 1:N_z
+                theta_v = theta_surf + delta_theta * (1.0 - exp(-z[i] / h_inv))
+                dtheta_dz = (delta_theta / h_inv) * exp(-z[i] / h_inv)
+                Km = p.l0 * sqrt(e[i])
+                Kh = p.l0 * sqrt(e[i])
+
+                u_star3 = (Km * S[i])^1.5
+                flux_q = Kh * dtheta_dz
+                L_profile[i] = (u_star3 * theta_v) / (p.kappa * p.g * max(flux_q, 1e-8))
+            end
 
             y_lnL = log.(L_profile)
             M = solve_natural_cubic_spline(z, y_lnL)
-            z_fold_est = find_coordinate_fold(z, y_lnL, M)
-            z_fold_exact = 200.0 / a_param
+            folds = find_coordinate_folds(z, y_lnL, M)
+            min_detJ = compute_min_jacobian_det(e, S, N2, p)
 
-            z_fold_str = isnan(z_fold_est) ? "Out of Bound" : @sprintf("%.4f", z_fold_est)
-            @printf("%10.1f | %12.4f | %12.4f | %12.4f | %12.4f | %12s | %12.4f\n",
-                t/3600.0, theta_surf, h_inv, maximum(S), maximum(e), z_fold_str, z_fold_exact)
+            fold_str = isempty(folds) ? "None Detected" : @sprintf("%.4f m", folds[1])
+            @printf("%8.1f | %12.4f | %12.4f | %12.4f | %14.4e | %-14s\n",
+                t/3600.0, theta_surf, maximum(S), maximum(e), min_detJ, fold_str)
         end
     end
-    println("="^115)
+    println("="^110)
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
