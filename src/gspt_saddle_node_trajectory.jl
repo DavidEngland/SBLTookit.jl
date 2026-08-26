@@ -1,197 +1,199 @@
 #!/usr/bin/env julia
 # src/gspt_saddle_node_trajectory.jl
-# package: SBLToolkit.jl
-# version 0.1.0
-# Author: David E. England, Ph.D.
-#
-# Date: 25 Aug 2026
-# Description: Simulates the slow-fast SBL system and analyzes the saddle-node bifurcation.
-# ==============================================================================
-# GSPT SADDLE-NODE BIFURCATION & 2D STATE-SPACE TRAJECTORY SIMULATOR
-# Developed for Generalized Similarity Profile Theory (GSPT) Manifold Verification
-# ==============================================================================
-# This script simulates the slow-fast SBL dynamical system:
-# 1. Fast Variable: Turbulent Kinetic Energy (e), which relaxes rapidly toward 
-#    its equilibrium manifold C_0^+.
-# 2. Slow Variable: Wind Shear (S), which is driven by geostrophic forcing G_0 
-#    and destroyed by turbulent shear stress.
-#
-# The buoyancy flux is regularized quadratically near the laminar limit to prevent 
-# unphysical negative TKE while allowing shear-driven reignition.
-# ==============================================================================
-
+# version 0.2.0
 using LinearAlgebra
 using Printf
 
-# Optional: using Plots for local rendering if executed in a standard environment
-# using Plots
-
-"""
-    solve_cubic_branches(S::Float64, l0::Float64, beta::Float64, N2::Float64, B0_max::Float64)
-
-Analytically computes the stable turbulent branch (e_st) and the unstable threshold
-(e_unst) for the GSPT fast manifold equation:
-    e^3 - p*e + q = 0
-where:
-    p = l0^2 * (S^2 + beta * N2)
-    q = l0 * B0_max * (1.0 + beta * N2 / S^2)
-
-Uses a high-performance, branch-free trigonometric Cardano-like solver optimized for
-HPC registers. Returns (e_st, e_unst, has_roots).
-"""
-function solve_cubic_branches(S::Float64, l0::Float64, beta::Float64, N2::Float64, B0_max::Float64)
-    if S < 1e-4
-        return 0.0, 0.0, false
-    end
-    
-    p = l0^2 * (S^2 + beta * N2)
-    q = l0 * B0_max * (1.0 + beta * N2 / S^2)
-    
-    # Check discriminant
-    D = 4.0 * p^3 - 27.0 * q^2
-    if D <= 0.0
-        return 0.0, 0.0, false # Stable branch has vanished (saddle-node bifurcation)
-    end
-    
-    R = 2.0 * sqrt(p / 3.0)
-    arg = 3.0 * q / (2.0 * p * sqrt(p / 3.0))
-    # Clamp to protect arccos domain against float rounding
-    arg_clamped = max(-1.0, min(1.0, arg))
-    phi = acos(arg_clamped)
-    
-    # Analytical roots of e^3 - p*e + q = 0 (using negated roots of x^3 - p*x - q = 0)
-    e_st = -R * cos((phi + 2.0 * pi) / 3.0)
-    e_unst = -R * cos((phi + 4.0 * pi) / 3.0)
-    
-    return e_st, e_unst, true
+Base.@kwdef struct SBLParams
+    epsilon::Float64 = 0.05    # Fast time-scale parameter (TKE relaxation)
+    l0::Float64 = 1.0     # Mixing length scale
+    beta::Float64 = 5.0     # Stability coefficient
+    N2::Float64 = 0.1     # Stratification (Brunt-Vaisala frequency squared)
+    B0_max::Float64 = 0.05    # Base buoyancy flux
+    delta_reg::Float64 = 0.01    # Buoyancy flux regularization threshold
+    G0::Float64 = 0.3     # Geostrophic wind shear forcing
+    gamma_s::Float64 = 1.8     # Turbulent shear destruction gain
+    r_s::Float64 = 0.15    # Background linear shear relaxation
+    e_floor::Float64 = 1e-4    # Positivity protection threshold
 end
 
 """
-    find_analytical_fold(l0::Float64, beta::Float64, N2::Float64, B0_max::Float64)
+    fast_manifold_F(e, S, p)
 
-Finds the exact critical wind shear S_fold where the saddle-node bifurcation occurs.
-The fold boundary is defined by:
-    S^4 * (S^2 + beta * N2) = 27 * B0_max^2 / (4 * l0^4)
+Evaluates the fast subsystem reduced vector field residual F(e, S; δ) where:
+    f_fast = (1/ε) * F(e, S; δ)
 """
-function find_analytical_fold(l0::Float64, beta::Float64, N2::Float64, B0_max::Float64)
-    target = 27.0 * B0_max^2 / (4.0 * l0^4)
-    # S^6 + (beta*N2)*S^4 - target = 0
-    # Let x = S^2, then x^3 + a*x^2 + b*x + c = 0 with b=0, c=-target.
-    a = beta * N2
-    b = 0.0
-    c = -target
+function fast_manifold_F(e::Float64, S::Float64, p::SBLParams)
+    S_eff = max(S, 1e-4)
+    D = 1.0 + p.beta * p.N2 / (S_eff^2)
+    B0 = p.B0_max * (e^2 / (e^2 + p.delta_reg^2))
+    return p.l0 * e * S_eff^2 - B0 - (e^3) / (p.l0 * D)
+end
 
-    # Depressed cubic y^3 + p_c*y + q_c = 0 via x = y - a/3.
-    p_c = b - a^2 / 3.0
-    q_c = 2.0 * a^3 / 27.0 - a * b / 3.0 + c
+"""
+    fast_manifold_jac(e, S, p)
 
-    # Discriminant for depressed cubic: Δ = (q/2)^2 + (p/3)^3
-    Δ = (q_c / 2.0)^2 + (p_c / 3.0)^3
+Computes analytical partial derivatives F_e, F_S, F_ee, and F_eS for stability and fold solvers.
+"""
+function fast_manifold_jac(e::Float64, S::Float64, p::SBLParams)
+    S_eff = max(S, 1e-4)
+    D = 1.0 + p.beta * p.N2 / (S_eff^2)
+    denom_e = e^2 + p.delta_reg^2
+    denom_S = S_eff^2 + p.beta * p.N2
 
-    if Δ > 0.0
-        # One real root.
-        y = cbrt(-q_c / 2.0 + sqrt(Δ)) + cbrt(-q_c / 2.0 - sqrt(Δ))
-        x = y - a / 3.0
-        return x > 0.0 ? sqrt(x) : NaN
-    else
-        # Three real roots (standard trigonometric form).
-        arg = (3.0 * q_c) / (2.0 * p_c) * sqrt(-3.0 / p_c)
-        phi = acos(clamp(arg, -1.0, 1.0))
-        R = 2.0 * sqrt(-p_c / 3.0)
+    B_e = 2.0 * p.B0_max * e * p.delta_reg^2 / (denom_e^2)
+    B_ee = 2.0 * p.B0_max * p.delta_reg^2 * (p.delta_reg^2 - 3.0 * e^2) / (denom_e^3)
 
-        y1 = R * cos(phi / 3.0)
-        y2 = R * cos((phi + 2.0 * pi) / 3.0)
-        y3 = R * cos((phi + 4.0 * pi) / 3.0)
+    Fe = p.l0 * S_eff^2 - B_e - (3.0 * e^2) / (p.l0 * D)
+    FS = 2.0 * p.l0 * e * S_eff - (2.0 * p.beta * p.N2 * e^3 * S_eff) / (p.l0 * (denom_S^2))
+    Fee = -B_ee - (6.0 * e) / (p.l0 * D)
+    FeS = 2.0 * p.l0 * S_eff - (6.0 * p.beta * p.N2 * e^2 * S_eff) / (p.l0 * (denom_S^2))
 
-        x_candidates = [y1 - a / 3.0, y2 - a / 3.0, y3 - a / 3.0]
-        x_pos = filter(x -> x > 0.0, x_candidates)
-        isempty(x_pos) && return NaN
+    return Fe, FS, Fee, FeS
+end
 
-        # Positive-S physical branch corresponds to the largest positive x = S^2.
-        return sqrt(maximum(x_pos))
+"""
+    solve_regularized_fold(p; tol=1e-10, max_iter=50)
+
+Exact saddle-node fold solver for the regularized system (δ > 0).
+Solves the simultaneous nonlinear algebraic system:
+    F(e, S; δ) = 0
+    F_e(e, S; δ) = 0
+using a 2D Newton-Raphson scheme.
+"""
+function solve_regularized_fold(p::SBLParams; tol::Float64=1e-10, max_iter::Int=50)
+    x = [0.47, 0.40] # Initial guess (e, S) near the fold region
+    for _ in 1:max_iter
+        e, S = x[1], x[2]
+        F = fast_manifold_F(e, S, p)
+        Fe, FS, Fee, FeS = fast_manifold_jac(e, S, p)
+
+        res = [F, Fe]
+        if norm(res, Inf) < tol
+            return S, e
+        end
+
+        J = [Fe FS; Fee FeS]
+        x -= J \ res
     end
+    return NaN, NaN
+end
+
+"""
+    solve_asymptotic_fold(p)
+
+Computes the classical cubic saddle-node fold boundary as δ -> 0.
+"""
+function solve_asymptotic_fold(p::SBLParams)
+    target = 27.0 * p.B0_max^2 / (4.0 * p.l0^4)
+    a = p.beta * p.N2
+    p_c = -a^2 / 3.0
+    q_c = 2.0 * a^3 / 27.0 - target
+
+    arg = (3.0 * q_c) / (2.0 * p_c) * sqrt(-3.0 / p_c)
+    phi = acos(clamp(arg, -1.0, 1.0))
+    R = 2.0 * sqrt(-p_c / 3.0)
+
+    x_max = max(
+        R * cos(phi / 3.0) - a / 3.0,
+        R * cos((phi + 2.0 * pi) / 3.0) - a / 3.0,
+        R * cos((phi + 4.0 * pi) / 3.0) - a / 3.0
+    )
+    S_fold = sqrt(x_max)
+    e_fold = 3.0 * p.B0_max / (2.0 * p.l0 * S_fold^2)
+    return S_fold, e_fold
 end
 
 """
     simulate_sbl_dynamics(; t_max=80.0, dt=0.001)
 
-Performs forward time integration of the slow-fast SBL system, resolving the
-relaxation oscillation cycle as it traverses the saddle-node fold and rebounds.
+Executes slow-fast trajectory integration alongside fast eigenvalue analysis,
+manifold distance diagnostics, and dynamic fold departure tracking.
 """
 function simulate_sbl_dynamics(; t_max::Float64=80.0, dt::Float64=0.001)
-    # Physical and model parameters
-    epsilon = 0.05    # Fast time-scale parameter (TKE relaxation)
-    l0 = 1.0          # Mixing length scale
-    beta = 5.0        # Stability coefficient
-    N2 = 0.1          # Stratification (Brunt-Vaisala frequency squared)
-    B0_max = 0.05     # Base buoyancy flux
-    delta_reg = 0.01  # Buoyancy flux regularization threshold near e=0
-    
-    # Slow momentum system parameters
-    G0 = 0.3          # Geostrophic wind shear forcing
-    gamma_s = 1.8     # Turbulent shear destruction gain
-    r_s = 0.15        # Background linear shear relaxation
-    
-    n_steps = int = round(Int, t_max / dt)
-    t_arr = collect(range(0.0, t_max, length=n_steps))
-    
+    p = SBLParams()
+    t_arr = collect(0.0:dt:t_max)
+    n_steps = length(t_arr)
+
     e_arr = zeros(n_steps)
     S_arr = zeros(n_steps)
-    
-    # Initial conditions (stable turbulent branch)
-    e_arr[1] = 0.5
-    S_arr[1] = 1.0
-    
-    println("Simulating 2D phase-space slow-fast dynamics...")
+    lambda_fast = zeros(n_steps)
+    norm_dist = zeros(n_steps)
+
+    # Initial conditions on the attracting branch
+    e_arr[1], S_arr[1] = 0.5, 1.0
+    floor_hits = 0
+
     for i in 2:n_steps
-        e = e_arr[i-1]
-        S = S_arr[i-1]
-        
-        # Fast system: TKE budget with quadratic regularization
-        B0 = B0_max * (e^2 / (e^2 + delta_reg^2))
-        denom = 1.0 + beta * N2 / (max(S, 1e-4)^2)
-        de_dt = (1.0 / epsilon) * (l0 * e * S^2 - B0 - (e^3) / (l0 * denom))
-        
-        # Slow system: Shear evolution
-        dS_dt = G0 - gamma_s * e * S - r_s * S
-        
-        # Forward Euler step
+        e, S = e_arr[i-1], S_arr[i-1]
+
+        # Fast variable update
+        F = fast_manifold_F(e, S, p)
+        de_dt = (1.0 / p.epsilon) * F
+
+        # Slow variable update
+        dS_dt = p.G0 - p.gamma_s * e * S - p.r_s * S
+
         e_next = e + de_dt * dt
         S_next = S + dS_dt * dt
-        
-        # Apply physical background TKE floor as seed for reignition
-        e_arr[i] = max(e_next, 1e-4)
+
+        # Track positivity floor activations
+        if e_next < p.e_floor
+            e_next = p.e_floor
+            floor_hits += 1
+        end
+
+        e_arr[i] = e_next
         S_arr[i] = max(S_next, 0.0)
+
+        # Fast subsystem diagnostics
+        Fe, FS, _, _ = fast_manifold_jac(e_arr[i], S_arr[i], p)
+        lambda_fast[i] = (1.0 / p.epsilon) * Fe
+        F_i = fast_manifold_F(e_arr[i], S_arr[i], p)
+
+        # Normalized distance d_C* = |F| / max(1, |F_e|e + |F_S|S)
+        norm_dist[i] = abs(F_i) / max(1.0, abs(Fe) * e_arr[i] + abs(FS) * S_arr[i])
     end
-    
-    # Compute analytical fold point
-    S_fold = find_analytical_fold(l0, beta, N2, B0_max)
-    e_fold = 3.0 * B0_max / (2.0 * S_fold^2)
-    
+
+    # Static fold calculations
+    S_fold_asym, e_fold_asym = solve_asymptotic_fold(p)
+    S_fold_reg, e_fold_reg = solve_regularized_fold(p)
+
+    # Identify dynamic loss of normal hyperbolicity (first λ_fast > 0 transition)
+    dep_idx = findfirst(i -> lambda_fast[i] > 0.0, 1:n_steps)
+    S_dep = dep_idx !== nothing ? S_arr[dep_idx] : NaN
+    e_dep = dep_idx !== nothing ? e_arr[dep_idx] : NaN
+
     println("="^80)
-    println("                          GSPT BIFURCATION AUDIT RESULTS")
+    println("                      GSPT MANIFOLD & BIFURCATION AUDIT RESULTS")
     println("="^80)
-    @printf("Analytical Fold Shear S_fold : %10.5f s^-1\n", S_fold)
-    @printf("Analytical Fold TKE e_fold   : %10.5f m^2 s^-2\n", e_fold)
-    @printf("Simulation S-range           : [%.4f, %.4f] s^-1\n", minimum(S_arr), maximum(S_arr))
-    @printf("Simulation e-range           : [%.4f, %.4f] m^2 s^-2\n", minimum(e_arr), maximum(e_arr))
+    @printf("Asymptotic Fold (δ = 0.00)  : S_fold = %8.5f s^-1, e_fold = %8.5f m^2 s^-2\n", S_fold_asym, e_fold_asym)
+    @printf("Regularized Fold (δ = 0.01) : S_fold = %8.5f s^-1, e_fold = %8.5f m^2 s^-2\n", S_fold_reg, e_fold_reg)
+    if dep_idx !== nothing
+        @printf("Dynamic Departure (λ_fast>0): S_dep  = %8.5f s^-1, e_dep  = %8.5f m^2 s^-2 (t = %.2f s)\n",
+            S_dep, e_dep, t_arr[dep_idx])
+    end
+    @printf("Numerical Floor Activations : %d / %d integration steps (%.2f%%)\n",
+        floor_hits, n_steps, (floor_hits / n_steps) * 100)
     println("="^80)
-    
-    # Print sample of the trajectory cycle
-    println("\nSample Trajectory (Relaxation Cycle):")
+
+    # Trajectory Diagnostics Sample Log
+    println("\nTrajectory Diagnostic Log (GSPT Verification):")
     println("-"^80)
-    @printf("%-10s | %-12s | %-12s | %-15s\n", "Time (s)", "Shear S", "TKE e", "State")
+    @printf("%-8s | %-10s | %-10s | %-12s | %-12s | %-15s\n",
+        "Time (s)", "Shear S", "TKE e", "λ_fast", "d_C*", "Hyperbolicity State")
     println("-"^80)
-    for i in 1:round(Int, n_steps/15):n_steps
-        state = e_arr[i] < 0.01 ? "Laminar Attractor" : "Stable Turbulent"
-        @printf("%10.2f | %12.4f | %12.4f | %-15s\n", t_arr[i], S_arr[i], e_arr[i], state)
+    step_stride = max(1, round(Int, n_steps / 15))
+    for i in 1:step_stride:n_steps
+        state = lambda_fast[i] < -0.1 ? "Attracting" : (lambda_fast[i] > 0.1 ? "Repelling" : "Fold Trans.")
+        @printf("%8.2f | %10.4f | %10.4f | %12.4e | %12.4e | %-15s\n",
+            t_arr[i], S_arr[i], e_arr[i], lambda_fast[i], norm_dist[i], state)
     end
     println("="^80)
-    
-    return S_fold, e_fold, S_arr, e_arr
+
+    return S_fold_reg, e_fold_reg, S_arr, e_arr, lambda_fast, norm_dist
 end
 
-# Main entrypoint
 function main()
     simulate_sbl_dynamics()
 end

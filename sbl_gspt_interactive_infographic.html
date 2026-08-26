@@ -33,14 +33,14 @@
                     <h1 class="text-xl font-bold bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
                         SBL Toolkit & GSPT Framework
                     </h1>
-                    <p class="text-xs text-slate-400">Stable Boundary Layer Signal Separation & Topological Bifurcation</p>
+                    <p class="text-xs text-slate-400">Stable Boundary Layer Signal Separation & Manifold Bifurcation Audit</p>
                 </div>
             </div>
             <nav class="flex flex-wrap gap-2 text-xs font-semibold">
                 <a href="#overview" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Overview</a>
                 <a href="#campaigns" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Field Campaigns</a>
                 <a href="#ceof" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">CEOF Wave-Jet</a>
-                <a href="#bifurcation" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Saddle-Node Dynamics</a>
+                <a href="#bifurcation" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Fast-Slow Dynamics</a>
                 <a href="#regularization" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">Regularization</a>
                 <a href="#gating" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 transition">QC Pipeline</a>
             </nav>
@@ -57,7 +57,7 @@
                     </div>
                     <h2 class="text-2xl sm:text-3xl font-extrabold text-white">Atmospheric Boundary Layer Signal Isolation & Topological Stability</h2>
                     <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
-                        The <strong class="text-teal-300">SBLToolkit.jl</strong> suite processes complex observational records from nocturnal field tower networks. By leveraging Complex Empirical Orthogonal Functions (CEOF), non-uniform Taylor-Vandermonde derivative operators, and Geometric Surface Pattern Theory (GSPT), the framework cleanly differentiates standing Low-Level Jets (LLJs) from propagating Internal Gravity Waves (IGWs) while mapping saddle-node turbulence collapse manifolds.
+                        The <strong class="text-teal-300">SBLToolkit.jl</strong> suite processes complex observational records from nocturnal field tower networks. By leveraging Complex Empirical Orthogonal Functions (CEOF), non-uniform Taylor-Vandermonde derivative operators, and Geometric Surface Pattern Theory (GSPT), the framework cleanly differentiates standing Low-Level Jets (LLJs) from propagating Internal Gravity Waves (IGWs) while auditing fast-slow manifold hyperbolicity and saddle-node turbulence collapse thresholds.
                     </p>
                 </div>
 
@@ -65,7 +65,7 @@
                     <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
                         <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">CEOF Accuracy</span>
                         <div class="text-2xl sm:text-3xl font-black text-teal-400 mt-2">99.93%</div>
-                        <span class="text-[11px] text-slate-400 mt-1">Wave Wavenumber Extraction</span>
+                        <span class="text-[11px] text-slate-400 mt-1">Wavenumber Recovery</span>
                     </div>
                     <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
                         <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Jet Variance Share</span>
@@ -78,14 +78,14 @@
                         <span class="text-[11px] text-slate-400 mt-1">Propagating Mode 2 Isolation</span>
                     </div>
                     <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
-                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fold Shear S<sub>fold</sub></span>
-                        <div id="kpi-s-fold" class="text-2xl sm:text-3xl font-black text-amber-400 mt-2">0.5899</div>
-                        <span class="text-[11px] text-slate-400 mt-1">Analytical Bifurcation (s<sup>-1</sup>)</span>
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Reg. Fold S<sub>fold</sub></span>
+                        <div id="kpi-s-fold" class="text-2xl sm:text-3xl font-black text-amber-400 mt-2">0.39989</div>
+                        <span class="text-[11px] text-slate-400 mt-1">2D Newton Fold (s<sup>-1</sup>)</span>
                     </div>
                     <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
-                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fold TKE e<sub>fold</sub></span>
-                        <div id="kpi-e-fold" class="text-2xl sm:text-3xl font-black text-rose-400 mt-2">0.2156</div>
-                        <span class="text-[11px] text-slate-400 mt-1">Critical Energy (m<sup>2</sup> s<sup>-2</sup>)</span>
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Reg. Fold e<sub>fold</sub></span>
+                        <div id="kpi-e-fold" class="text-2xl sm:text-3xl font-black text-rose-400 mt-2">0.46901</div>
+                        <span class="text-[11px] text-slate-400 mt-1">Critical TKE (m<sup>2</sup> s<sup>-2</sup>)</span>
                     </div>
                 </div>
             </div>
@@ -174,29 +174,31 @@
 
         <section id="bifurcation" class="space-y-6">
             <div class="border-l-4 border-amber-500 pl-4">
-                <h2 class="text-xl sm:text-2xl font-bold text-white">3. Interactive GSPT Saddle-Node Simulator & Fast-Slow Relaxation Engine</h2>
-                <p class="text-xs sm:text-sm text-slate-400">Direct client-side execution of `gspt_saddle_node_trajectory.jl` phase-space dynamics and fold point calculations.</p>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">3. Interactive GSPT Saddle-Node Simulator & Fast-Slow Hyperbolicity Engine</h2>
+                <p class="text-xs sm:text-sm text-slate-400">Direct client-side execution of `gspt_saddle_node_trajectory.jl` 2D Newton fold solving and fast eigenvalue stability diagnostics.</p>
             </div>
 
             <p class="text-sm text-slate-300 leading-relaxed bg-slate-800/40 p-4 rounded-xl border border-slate-800">
-                GSPT represents nocturnal boundary layer transitions as a fast-slow dynamical system in 2D phase-space (Shear S vs Turbulent Kinetic Energy e). When shear drops below the analytical fold threshold <strong id="fold-summary-text" class="text-amber-300">S<sub>fold</sub> = 0.58985 s<sup>-1</sup></strong>, the stable turbulent equilibrium annihilates, precipitating a rapid collapse to the <strong class="text-rose-300">Laminar Attractor</strong> (e &approx; 0.0005 m<sup>2</sup> s<sup>-2</sup>). As jet shear slowly rebuilds, the system undergoes periodic relaxation bursts.
+                GSPT models nocturnal boundary layer transitions as a fast-slow dynamical system in 2D phase-space (Shear S vs Turbulent Kinetic Energy e). Solved via exact 2D Newton-Raphson algebraic root-finding for regularized systems (&delta; = 0.01) alongside Cardano asymptotic limits (&delta; &rarr; 0), when shear drops below <strong id="fold-summary-text" class="text-amber-300">S<sub>fold</sub> = 0.39989 s<sup>-1</sup></strong>, normal hyperbolicity is lost (&lambda;<sub>fast</sub> &gt; 0), initiating rapid collapse to the <strong class="text-rose-300">Laminar Attractor</strong>.
             </p>
 
-            <!-- Simulator Control Panel -->
             <div class="bg-slate-800/80 p-6 rounded-2xl border border-amber-500/30 shadow-xl space-y-4">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
-                            <span>⚡</span> Real-Time Numerical Parameter Controls
+                            <span>⚡</span> Real-Time Numerical Parameter Controls & Diagnostic Benchmarks
                         </h3>
-                        <p class="text-xs text-slate-400">Adjust geostrophic forcing, relaxation times, and mixing length to recompute trajectory paths and critical fold bounds.</p>
+                        <p class="text-xs text-slate-400">Adjust geostrophic forcing, fast relaxation time, and mixing length to calculate exact regularized vs asymptotic folds.</p>
                     </div>
-                    <div class="flex gap-3 text-xs">
+                    <div class="flex flex-wrap gap-2 text-xs">
                         <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
-                            <span class="text-slate-400">S<sub>fold</sub>: </span><span id="ctrl-s-fold" class="font-mono font-bold text-teal-300">0.58985 s⁻¹</span>
+                            <span class="text-slate-400">Regularized Fold S<sub>fold</sub>: </span><span id="ctrl-s-fold" class="font-mono font-bold text-teal-300">0.39989 s⁻¹</span>
                         </div>
                         <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
-                            <span class="text-slate-400">e<sub>fold</sub>: </span><span id="ctrl-e-fold" class="font-mono font-bold text-amber-300">0.21557 m²s⁻²</span>
+                            <span class="text-slate-400">Regularized Fold e<sub>fold</sub>: </span><span id="ctrl-e-fold" class="font-mono font-bold text-amber-300">0.46901 m²s⁻²</span>
+                        </div>
+                        <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
+                            <span class="text-slate-400">Dynamic Departure t: </span><span id="ctrl-t-dep" class="font-mono font-bold text-sky-300">0.00 s</span>
                         </div>
                     </div>
                 </div>
@@ -212,7 +214,7 @@
 
                     <div class="space-y-1">
                         <div class="flex justify-between text-xs">
-                            <label for="slider-eps" class="text-slate-300 font-medium">Relaxation Parameter (&epsilon;):</label>
+                            <label for="slider-eps" class="text-slate-300 font-medium">Fast Relaxation (&epsilon;):</label>
                             <span id="val-eps" class="font-mono text-teal-400 font-bold">0.05</span>
                         </div>
                         <input id="slider-eps" type="range" min="0.01" max="0.20" step="0.01" value="0.05" class="w-full accent-teal-400 cursor-pointer">
@@ -228,13 +230,12 @@
                 </div>
             </div>
 
-            <!-- Bifurcation Charts -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 shadow-lg">
                     <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
-                        <span>📉</span> Time Series Trajectory: Shear (S) & TKE (e) Relaxation Cycle
+                        <span>📉</span> Time Series Trajectory: Shear (S), TKE (e) & Fast Eigenvalue (&lambda;<sub>fast</sub>)
                     </h3>
-                    <p class="text-xs text-slate-400 mb-4">Forward time integration showing sudden TKE collapses and slow wind shear rebuild phases.</p>
+                    <p class="text-xs text-slate-400 mb-4">Forward time integration showing sudden TKE collapses triggered when fast eigenvalue &lambda;<sub>fast</sub> crosses zero.</p>
                     <div class="chart-container">
                         <canvas id="bifurcationChart"></canvas>
                     </div>
@@ -244,35 +245,38 @@
                     <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
                         <span>🌀</span> 2D Phase Portrait: Shear (S) vs. TKE (e) Orbit
                     </h3>
-                    <p class="text-xs text-slate-400 mb-4">Phase-space trajectory cycling around the critical fold line S<sub>fold</sub> into the laminar regime.</p>
+                    <p class="text-xs text-slate-400 mb-4">Phase-space trajectory cycling around regularized and asymptotic fold points into the laminar regime.</p>
                     <div class="chart-container">
                         <canvas id="phasePortraitChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
-                    <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Analytical Saddle-Node Fold</div>
-                    <div class="space-y-1 text-xs text-slate-300">
-                        <p>• Critical Fold Shear: <span id="info-s-fold" class="font-mono text-teal-300">0.58985 s<sup>-1</sup></span></p>
-                        <p>• Critical Fold TKE: <span id="info-e-fold" class="font-mono text-sky-300">0.21557 m<sup>2</sup> s<sup>-2</sup></span></p>
-                        <p>• Physical Mechanism: Saddle-Node manifold annihilation under strong radiative cooling.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700 space-y-2">
+                    <div class="text-xs font-bold text-amber-400 uppercase tracking-wider">2D Newton Fold Inversion</div>
+                    <div class="space-y-1 text-xs text-slate-300 font-mono">
+                        <p>• Reg. Fold S<sub>fold</sub> (&delta;=0.01) : <span id="info-s-fold-reg" class="text-teal-300">0.39989 s⁻¹</span></p>
+                        <p>• Reg. Fold e<sub>fold</sub> (&delta;=0.01) : <span id="info-e-fold-reg" class="text-sky-300">0.46901 m²s⁻²</span></p>
+                        <p>• Asym Fold S<sub>fold</sub> (&delta;=0.00) : <span id="info-s-fold-asym" class="text-amber-300">0.39989 s⁻¹</span></p>
+                        <p>• Asym Fold e<sub>fold</sub> (&delta;=0.00) : <span id="info-e-fold-asym" class="text-rose-300">0.46888 m²s⁻²</span></p>
                     </div>
                 </div>
 
-                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
-                    <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Hysteretic State Partition</div>
-                    <div class="space-y-1 text-xs text-slate-300">
-                        <p>• <strong class="text-teal-300">Stable Turbulent State:</strong> TKE e &gt; 0.20 m<sup>2</sup> s<sup>-2</sup> (Active shear mixing)</p>
-                        <p>• <strong class="text-rose-400">Laminar Attractor:</strong> TKE e &lt; 0.01 m<sup>2</sup> s<sup>-2</sup> (Turbulence collapse state)</p>
-                    </div>
-                </div>
-
-                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700">
-                    <div class="text-xs font-bold text-teal-400 uppercase tracking-wider mb-2">Jet Shear Revival Cycle</div>
+                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700 space-y-2">
+                    <div class="text-xs font-bold text-sky-400 uppercase tracking-wider">Fast Eigenvalue & Normal Hyperbolicity</div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        During laminar collapse, friction drops, allowing the Low-Level Jet to accelerate. Shear S accumulates until exceeding the upper ignition threshold, triggering intermittent turbulent bursts.
+                        Fast eigenvalue <span class="font-mono text-teal-300">&lambda;<sub>fast</sub> = (1/&epsilon;) &middot; F<sub>e</sub></span> determines local attraction. When &lambda;<sub>fast</sub> &lt; -0.1, the manifold is strongly attracting; when &lambda;<sub>fast</sub> &gt; 0, normal hyperbolicity is lost, initiating rapid departure.
+                    </p>
+                </div>
+
+                <div class="bg-slate-800/60 p-5 rounded-xl border border-slate-700 space-y-2">
+                    <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Normalized Critical Distance d<sub>C</sub>*</div>
+                    <p class="text-xs text-slate-300 leading-relaxed font-mono">
+                        d<sub>C</sub>* = |F| / max(1, |F<sub>e</sub>|e + |F<sub>S</sub>|S)
+                    </p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Quantifies geometric proximity to the critical manifold F(e, S; &delta;) = 0 during rapid fast-slow relaxation cycles.
                     </p>
                 </div>
             </div>
@@ -444,69 +448,157 @@
             }
         };
 
-        // GSPT Physics Simulation Engine (Client-side port of Julia script gspt_saddle_node_trajectory.jl)
-        function simulateGSPT(G0, epsilon, l0) {
-            const beta = 5.0;
-            const N2 = 0.1;
-            const B0_max = 0.05;
-            const delta_reg = 0.01;
-            const gamma_s = 1.8;
-            const r_s = 0.15;
+        function fastManifoldF(e, S, p) {
+            const S_eff = Math.max(S, 1e-4);
+            const D = 1.0 + (p.beta * p.N2) / (S_eff * S_eff);
+            const B0 = p.B0_max * ((e * e) / (e * e + p.delta_reg * p.delta_reg));
+            return p.l0 * e * S_eff * S_eff - B0 - (Math.pow(e, 3)) / (p.l0 * D);
+        }
+
+        function fastManifoldJac(e, S, p) {
+            const S_eff = Math.max(S, 1e-4);
+            const D = 1.0 + (p.beta * p.N2) / (S_eff * S_eff);
+            const denom_e = e * e + p.delta_reg * p.delta_reg;
+            const denom_S = S_eff * S_eff + p.beta * p.N2;
+
+            const B_e = (2.0 * p.B0_max * e * p.delta_reg * p.delta_reg) / (denom_e * denom_e);
+            const B_ee = (2.0 * p.B0_max * p.delta_reg * p.delta_reg * (p.delta_reg * p.delta_reg - 3.0 * e * e)) / (Math.pow(denom_e, 3));
+
+            const Fe = p.l0 * S_eff * S_eff - B_e - (3.0 * e * e) / (p.l0 * D);
+            const FS = 2.0 * p.l0 * e * S_eff - (2.0 * p.beta * p.N2 * Math.pow(e, 3) * S_eff) / (p.l0 * denom_S * denom_S);
+            const Fee = -B_ee - (6.0 * e) / (p.l0 * D);
+            const FeS = 2.0 * p.l0 * S_eff - (6.0 * p.beta * p.N2 * e * e * S_eff) / (p.l0 * denom_S * denom_S);
+
+            return { Fe, FS, Fee, FeS };
+        }
+
+        function solveRegularizedFold(p) {
+            let e = 0.47;
+            let S = 0.40;
+            const maxIter = 50;
+            const tol = 1e-10;
+
+            for (let i = 0; i < maxIter; i++) {
+                const F = fastManifoldF(e, S, p);
+                const { Fe, FS, Fee, FeS } = fastManifoldJac(e, S, p);
+
+                const resF = F;
+                const resFe = Fe;
+
+                if (Math.max(Math.abs(resF), Math.abs(resFe)) < tol) {
+                    return { S_fold: S, e_fold: e };
+                }
+
+                const det = Fe * FeS - FS * Fee;
+                if (Math.abs(det) < 1e-14) break;
+
+                const de = (FeS * resF - FS * resFe) / det;
+                const dS = (-Fee * resF + Fe * resFe) / det;
+
+                e -= de;
+                S -= dS;
+            }
+            return solveAsymptoticFold(p);
+        }
+
+        function solveAsymptoticFold(p) {
+            const target = (27.0 * p.B0_max * p.B0_max) / (4.0 * Math.pow(p.l0, 4));
+            const a = p.beta * p.N2;
+            const p_c = -(a * a) / 3.0;
+            const q_c = (2.0 * Math.pow(a, 3)) / 27.0 - target;
+
+            const arg = (3.0 * q_c) / (2.0 * p_c) * Math.sqrt(-3.0 / p_c);
+            const clampedArg = Math.max(-1.0, Math.min(1.0, arg));
+            const phi = Math.acos(clampedArg);
+            const R = 2.0 * Math.sqrt(-p_c / 3.0);
+
+            const x1 = R * Math.cos(phi / 3.0) - a / 3.0;
+            const x2 = R * Math.cos((phi + 2.0 * Math.PI) / 3.0) - a / 3.0;
+            const x3 = R * Math.cos((phi + 4.0 * Math.PI) / 3.0) - a / 3.0;
+
+            const x_max = Math.max(x1, x2, x3);
+            const S_fold = Math.sqrt(x_max);
+            const e_fold = (3.0 * p.B0_max) / (2.0 * p.l0 * S_fold * S_fold);
+
+            return { S_fold, e_fold };
+        }
+
+        function simulateSBLDynamics(G0, epsilon, l0) {
+            const p = {
+                epsilon: epsilon,
+                l0: l0,
+                beta: 5.0,
+                N2: 0.1,
+                B0_max: 0.05,
+                delta_reg: 0.01,
+                G0: G0,
+                gamma_s: 1.8,
+                r_s: 0.15,
+                e_floor: 1e-4
+            };
+
+            const regFold = solveRegularizedFold(p);
+            const asymFold = solveAsymptoticFold(p);
+
             const dt = 0.002;
             const t_max = 80.0;
             const n_steps = Math.round(t_max / dt);
 
-            // Analytical Fold Calculation
-            const target = (27.0 * B0_max * B0_max) / (4.0 * Math.pow(l0, 4));
-            const a = beta * N2;
-            const p_c = - (a * a) / 3.0;
-            const q_c = (2.0 * Math.pow(a, 3)) / 27.0 - target;
-            const Δ = Math.pow(q_c / 2.0, 2) + Math.pow(p_c / 3.0, 3);
-
-            let S_fold = 0.58985;
-            if (Δ > 0) {
-                const y = Math.cbrt(-q_c / 2.0 + Math.sqrt(Δ)) + Math.cbrt(-q_c / 2.0 - Math.sqrt(Δ));
-                const x = y - a / 3.0;
-                if (x > 0) S_fold = Math.sqrt(x);
-            }
-            const e_fold = (3.0 * B0_max) / (2.0 * S_fold * S_fold);
-
-            // Forward Euler Numerical Trajectory Simulation
             let e = 0.5;
             let S = 1.0;
+
             const times = [];
             const e_arr = [];
             const S_arr = [];
+            const lambda_fast_arr = [];
             const trajectory = [];
+
+            let dep_time = null;
 
             const sampleInterval = Math.round(n_steps / 80);
 
             for (let i = 0; i < n_steps; i++) {
                 const t = i * dt;
-                const B0 = B0_max * ((e * e) / (e * e + delta_reg * delta_reg));
-                const denom = 1.0 + (beta * N2) / Math.max(S * S, 1e-8);
-                const de_dt = (1.0 / epsilon) * (l0 * e * S * S - B0 - Math.pow(e, 3) / (l0 * denom));
-                const dS_dt = G0 - gamma_s * e * S - r_s * S;
 
-                e = Math.max(e + de_dt * dt, 1e-4);
+                const F = fastManifoldF(e, S, p);
+                const de_dt = (1.0 / p.epsilon) * F;
+                const dS_dt = p.G0 - p.gamma_s * e * S - p.r_s * S;
+
+                e = Math.max(e + de_dt * dt, p.e_floor);
                 S = Math.max(S + dS_dt * dt, 0.0);
+
+                const { Fe } = fastManifoldJac(e, S, p);
+                const lambda_fast = (1.0 / p.epsilon) * Fe;
+
+                if (dep_time === null && lambda_fast > 0.0) {
+                    dep_time = t;
+                }
 
                 if (i % sampleInterval === 0) {
                     times.push(t.toFixed(1) + 's');
                     e_arr.push(e);
                     S_arr.push(S);
+                    lambda_fast_arr.push(lambda_fast);
                     trajectory.push({ x: S, y: e });
                 }
             }
 
-            return { S_fold, e_fold, times, e_arr, S_arr, trajectory };
+            return {
+                regFold,
+                asymFold,
+                dep_time: dep_time !== null ? dep_time : 0.0,
+                times,
+                e_arr,
+                S_arr,
+                lambda_fast_arr,
+                trajectory
+            };
         }
 
         let bifurcationChartInstance = null;
         let phasePortraitChartInstance = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Campaign Chart
             const campaignLabelsRaw = ['CASES-99 (Kansas Prairie)', 'GABLS3 (Cabauw Mast)', 'SHEBA (Arctic Pack)'];
             const campaignLabelsWrapped = campaignLabelsRaw.map(wrapLabel);
             
@@ -543,7 +635,6 @@
                 }
             });
 
-            // 2. CEOF Variance Chart
             const ceofVarianceLabelsRaw = ['Mode 1: Standing LLJ', 'Mode 2: Propagating IGW'];
             const ceofVarianceLabelsWrapped = ceofVarianceLabelsRaw.map(wrapLabel);
 
@@ -568,7 +659,6 @@
                 }
             });
 
-            // 3. CEOF Profile Chart
             const heightLabels = ['1.5m', '5.0m', '10.0m', '20.0m', '30.0m', '45.0m', '55.0m'];
 
             new Chart(document.getElementById('ceofProfileChart'), {
@@ -610,7 +700,6 @@
                 }
             });
 
-            // 4. Regularization Chart
             const regHeights = ['5m', '15m', '25m', '30m (Nose)', '35m', '45m', '55m'];
 
             new Chart(document.getElementById('regularizationChart'), {
@@ -652,7 +741,6 @@
                 }
             });
 
-            // Dynamic Interactive Simulation Init
             function updateSimulationUI() {
                 const G0 = parseFloat(document.getElementById('slider-g0').value);
                 const epsilon = parseFloat(document.getElementById('slider-eps').value);
@@ -662,17 +750,21 @@
                 document.getElementById('val-eps').textContent = epsilon.toFixed(2);
                 document.getElementById('val-l0').textContent = l0.toFixed(2);
 
-                const sim = simulateGSPT(G0, epsilon, l0);
+                const sim = simulateSBLDynamics(G0, epsilon, l0);
 
-                document.getElementById('kpi-s-fold').textContent = sim.S_fold.toFixed(4);
-                document.getElementById('kpi-e-fold').textContent = sim.e_fold.toFixed(4);
-                document.getElementById('ctrl-s-fold').textContent = sim.S_fold.toFixed(5) + ' s⁻¹';
-                document.getElementById('ctrl-e-fold').textContent = sim.e_fold.toFixed(5) + ' m²s⁻²';
-                document.getElementById('info-s-fold').textContent = sim.S_fold.toFixed(5) + ' s⁻¹';
-                document.getElementById('info-e-fold').textContent = sim.e_fold.toFixed(5) + ' m²s⁻²';
-                document.getElementById('fold-summary-text').innerHTML = 'S<sub>fold</sub> = ' + sim.S_fold.toFixed(5) + ' s<sup>-1</sup>';
+                document.getElementById('kpi-s-fold').textContent = sim.regFold.S_fold.toFixed(5);
+                document.getElementById('kpi-e-fold').textContent = sim.regFold.e_fold.toFixed(5);
+                document.getElementById('ctrl-s-fold').textContent = sim.regFold.S_fold.toFixed(5) + ' s⁻¹';
+                document.getElementById('ctrl-e-fold').textContent = sim.regFold.e_fold.toFixed(5) + ' m²s⁻²';
+                document.getElementById('ctrl-t-dep').textContent = sim.dep_time.toFixed(2) + ' s';
 
-                // Update Time Series Chart
+                document.getElementById('info-s-fold-reg').textContent = sim.regFold.S_fold.toFixed(5) + ' s⁻¹';
+                document.getElementById('info-e-fold-reg').textContent = sim.regFold.e_fold.toFixed(5) + ' m²s⁻²';
+                document.getElementById('info-s-fold-asym').textContent = sim.asymFold.S_fold.toFixed(5) + ' s⁻¹';
+                document.getElementById('info-e-fold-asym').textContent = sim.asymFold.e_fold.toFixed(5) + ' m²s⁻²';
+
+                document.getElementById('fold-summary-text').innerHTML = 'S<sub>fold</sub> = ' + sim.regFold.S_fold.toFixed(5) + ' s<sup>-1</sup>';
+
                 if (bifurcationChartInstance) {
                     bifurcationChartInstance.data.labels = sim.times;
                     bifurcationChartInstance.data.datasets[0].data = sim.e_arr;
@@ -735,7 +827,6 @@
                     });
                 }
 
-                // Update 2D Phase Portrait Chart
                 if (phasePortraitChartInstance) {
                     phasePortraitChartInstance.data.datasets[0].data = sim.trajectory;
                     phasePortraitChartInstance.update();
@@ -782,12 +873,10 @@
                 }
             }
 
-            // Event Listeners for UI Sliders
             document.getElementById('slider-g0').addEventListener('input', updateSimulationUI);
             document.getElementById('slider-eps').addEventListener('input', updateSimulationUI);
             document.getElementById('slider-l0').addEventListener('input', updateSimulationUI);
 
-            // Initial Simulation Run
             updateSimulationUI();
         });
     </script>
