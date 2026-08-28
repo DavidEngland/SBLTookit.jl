@@ -52,14 +52,14 @@ jobs:
             
             @info "Exporting Pluto notebook to HTML..."
             # This generates fast_slow_tke_pluto.html in the workspace root
-            PlutoSliderServer.export_notebook("fast_slow_tke_pluto.jl")
+            PlutoSliderServer.export_notebook("scripts/fast_slow_tke_pluto.jl")
             
             @info "Setting up static site directory..."
             # Create a clean folder for GitHub Pages deployment
             mkpath("public")
             
             # Move and rename the exported HTML file to index.html so it serves as the homepage
-            mv("fast_slow_tke_pluto.html", "public/index.html", force=true)
+            mv("scripts/fast_slow_tke_pluto.html", "public/index.html", force=true)
             
             @info "Export complete. Index file prepared in ./public"
           '
