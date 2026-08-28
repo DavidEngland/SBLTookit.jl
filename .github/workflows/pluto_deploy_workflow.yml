@@ -1,0 +1,84 @@
+# GitHub Actions CI/CD Workflow to build and deploy an interactive Pluto.jl notebook to GitHub Pages
+# This workflow runs whenever a commit is pushed to the main branch or triggered manually.
+
+name: Deploy Pluto Notebook to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual trigger from the Actions tab
+
+# Set permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs in progress (but not queueing)
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10' # Recommended LTS version
+
+      - name: Cache Julia Packages
+        uses: julia-actions/cache@v2
+
+      - name: Export Pluto Notebook to Interactive HTML
+        run: |
+          julia -e '
+            using Pkg
+            # Install PlutoSliderServer and the exact dependencies needed by the fast-slow TKE notebook
+            Pkg.add([
+              Pkg.PackageSpec(name="PlutoSliderServer"),
+              Pkg.PackageSpec(name="PlutoUI"),
+              Pkg.PackageSpec(name="OrdinaryDiffEq"),
+              Pkg.PackageSpec(name="Plots"),
+              Pkg.PackageSpec(name="LinearAlgebra")
+            ])
+            
+            using PlutoSliderServer
+            
+            @info "Exporting Pluto notebook to HTML..."
+            # This generates fast_slow_tke_pluto.html in the workspace root
+            PlutoSliderServer.export_notebook("fast_slow_tke_pluto.jl")
+            
+            @info "Setting up static site directory..."
+            # Create a clean folder for GitHub Pages deployment
+            mkpath("public")
+            
+            # Move and rename the exported HTML file to index.html so it serves as the homepage
+            mv("fast_slow_tke_pluto.html", "public/index.html", force=true)
+            
+            @info "Export complete. Index file prepared in ./public"
+          '
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
