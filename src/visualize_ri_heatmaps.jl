@@ -1,334 +1,411 @@
 #!/usr/bin/env julia
 # src/visualize_ri_heatmaps.jl
-# AUTHOR: David England
-# SBLToolkit Visualization Script
+# AUTHOR: David England (Refactored for Physical & GSPT Rigor)
+# SBLToolkit Diagnostics & Visualization Suite
 # ==========================================================================
-# FILE: visualize_ri_heatmaps.jl
-# DESCRIPTION: High-fidelity visualization script using Julia (CairoMakie + NCDatasets)
-#              to compute and map regularized Richardson number (Ri_g) profiles
-#              as spatial-temporal heatmaps across atmospheric campaign datasets.
-#              Supports both standard NetCDF campaign ingestion and a robust,
-#              physically-derived Stable Boundary Layer (SBL) synthetic demo.
-# ==========================================================================
+
+using Pkg
+Pkg.activate(dirname(@__DIR__))
 
 using Dates
 using Statistics
 
-# --- 1. Environment & Package Check ---
-# We use standard Julia package loading blocks with clear warnings.
-# Since Julia packages might need to be pre-installed by the user, we handle
-# imports defensively and provide instructions.
 try
     using NCDatasets
     using CairoMakie
 catch e
-    @error "Required visualization packages (NCDatasets.jl, CairoMakie.jl) not fully loaded."
-    @info "To run this script, please ensure they are installed in your Julia environment:"
-    @info "julia> using Pkg; Pkg.add([\"NCDatasets\", \"CairoMakie\"])"
+    @error "Ensure dependencies are installed in project environment:"
+    @info "julia --project=. -e 'using Pkg; Pkg.add([\"NCDatasets\", \"CairoMakie\"])'"
     rethrow(e)
 end
 
-"""
-    compute_safe_rig(N2, S2; Ri_bound=2.0, ϵ_s=1e-12)
+using NCDatasets
+using CairoMakie
 
-Computes the regularized, safe, and smoothly bounded gradient Richardson number (Ri_g).
-Utilizes:
-1. Denominator regularization floor (ϵ_s) to prevent division-by-zero under vanishing shear.
-2. Asymptotic hyperbolic tangent clamp (Ri_bound) to elegantly bound extremely stable or
-   unstable convective regimes, preventing solver stiffness and providing a visually clean range.
+# --- 1. Smooth Mathematical Utilities ---
+
 """
-@inline function compute_safe_rig(N2::T, S2::T; Ri_bound::T=T(2.0), ϵ_s::T=T(1e-12)) where {T <: AbstractFloat}
-    # Regularize vertical shear to prevent singularity
-    S2_safe = S2 + ϵ_s
-    # Apply analytic hyperbolic tanh clamp to map raw range (-inf, +inf) smoothly to [-Ri_bound, +Ri_bound]
-    return Ri_bound * tanh(N2 / (Ri_bound * S2_safe))
+    softplus_floor(x, x_min; k=10.0)
+
+Smooth, infinitely differentiable approximation to max(x, x_min) using a log-sum-exp
+formulation. Avoids C1 derivative discontinuities in finite-difference diagnostic chains.
+"""
+@inline function softplus_floor(x::T, x_min::T; k::T=T(10.0)) where {T<:AbstractFloat}
+    return x_min + log1p(exp(k * (x - x_min))) / k
 end
 
-# Handle generic numbers by promotion to Float64
-compute_safe_rig(N2::Real, S2::Real; Ri_bound::Real=2.0, ϵ_s::Real=1e-12) = 
-    compute_safe_rig(Float64(N2), Float64(S2); Ri_bound=Float64(Ri_bound), ϵ_s=Float64(ϵ_s))
 
+# --- 2. Synthetic SBL Diagnostic Generator ---
 
 """
     generate_synthetic_sbl_data()
 
-Generates a physically-grounded nocturnal Stable Boundary Layer (SBL) scenario to serve as
-a high-fidelity diagnostic testbed. Simulates:
-1. Progressive surface radiative cooling after sunset, producing a steep potential temperature
-   inversion near the ground (high θ_z) that weakens with height.
-2. An evolving Low-Level Jet (LLJ) in the u-wind component that intensifies and slowly descends
-   over the 12-hour nocturnal period, generating strong shear layers below the jet core.
-3. Ekman-friction-induced wind turning in the v-wind component.
+Generates a synthetic 15-level idealized sparse SBL grid (z = 2 to 200m).
+Uses differentiable profile functions to prevent artificial shear jump artifacts.
 """
 function generate_synthetic_sbl_data()
-    # 15 vertical levels (standardized campaign grid, e.g., SHEBA/FLOSS-like tower levels)
+    # 15-level idealized sparse SBL grid (Δz ≈ 14.1 m)
     z = collect(range(2.0, 200.0, length=15))
     nz = length(z)
-    
-    # 12-hour night with 10-minute sampling resolution (73 time points)
+
     times = collect(range(0.0, 12.0, length=73)) # Hours since sunset
     nt = length(times)
-    
-    # Pre-allocate 2D profiles (Time x Height)
+
     θ = zeros(nt, nz)
     u = zeros(nt, nz)
     v = zeros(nt, nz)
-    
-    # Physical Constants
-    θ0 = 265.0       # Cold winter reference temperature (K)
-    g = 9.81         # Gravitational acceleration (m/s^2)
+
+    θ0 = 265.0       # Reference surface temp (K)
+    g = 9.81         # Acceleration due to gravity (m/s^2)
     h_θ = 45.0       # Inversion depth scale (m)
-    w_jet = 35.0     # Low-level jet width scale (m)
-    u_g = 4.5        # Background geostrophic wind (m/s)
-    
+    w_jet = 35.0     # LLJ width scale (m)
+    u_g = 4.5        # Geostrophic background wind (m/s)
+    z0 = 0.1         # Roughness length (m)
+
     for i in 1:nt
         t = times[i]
-        
-        # A. Radiative Cooling: Surface potential temperature cools asymptotically with time
-        Δθ_surf = -12.0 * (1.0 - exp(-t / 3.5)) # Up to 12 K cooling at surface
+        Δθ_surf = -12.0 * (1.0 - exp(-t / 3.5))
+
         for k in 1:nz
-            # Exponential inversion profile + background weak tropospheric stability (0.004 K/m)
+            # 1. Surface inversion profile
             θ[i, k] = θ0 + Δθ_surf * exp(-z[k] / h_θ) + 0.004 * z[k]
-        end
-        
-        # B. Descending Low-Level Jet (LLJ): Peak wind speed intensifies at midnight, core descends
-        U_jet = 7.0 + 5.0 * sin(pi * t / 12.0)        # Jet speed ranges from 7m/s to 12m/s
-        z_jet = 140.0 - 50.0 * (t / 12.0)             # Jet core descends from 140m to 90m over night
-        
-        for k in 1:nz
-            # Gaussian jet structure + logarithmic boundary layer recovery
+
+            # 2. Descending Low-Level Jet (LLJ)
+            U_jet = 7.0 + 5.0 * sin(pi * t / 12.0)
+            z_jet = 140.0 - 50.0 * (t / 12.0)
+
             u_jet_comp = U_jet * exp(-((z[k] - z_jet) / w_jet)^2)
-            u_log_comp = u_g * (log(z[k] / 0.1) / log(200.0 / 0.1))
-            
-            u[i, k] = max(0.1, u_jet_comp + u_log_comp)
-            # Coriolis-induced directional wind turning in the SBL
+            u_log_comp = u_g * (log(z[k] / z0) / log(200.0 / z0))
+
+            u_raw = u_jet_comp + u_log_comp
+            u[i, k] = softplus_floor(u_raw, 0.1; k=10.0)
             v[i, k] = 0.4 * u[i, k] * sin(pi * z[k] / 200.0)
         end
     end
-    
-    return times, z, θ, u, v, θ0, g
+
+    return times, z, θ, u, v, g
 end
 
 
-"""
-    process_campaign_profiles(times, z, θ, u, v, θ0, g; Ri_bound=2.0, ϵ_s=1e-12)
+# --- 3. Robust Data Ingestion & Sentinel Normalization ---
 
-Computes buoyancy gradients, horizontal wind shears, and safe/smooth gradient Richardson profiles
-on the vertical mid-levels between tower height coordinates.
 """
-function process_campaign_profiles(times, z, θ, u, v, θ0, g; Ri_bound=2.0, ϵ_s=1e-12)
+    normalize_campaign_array(A; sentinels=[-9999.0, -999.0, 1e30])
+
+Safely converts Julia `missing` values, NaNs, and sentinel flags into Float64 NaNs.
+"""
+function normalize_campaign_array(A::AbstractArray; sentinels=[-9999.0, -999.0, 1e30])
+    A_clean = Array{Float64}(undef, size(A))
+    for i in eachindex(A)
+        val = A[i]
+        if ismissing(val) || isnan(val) || any(s -> isapprox(Float64(val), s; rtol=1e-3), sentinels)
+            A_clean[i] = NaN
+        else
+            A_clean[i] = Float64(val)
+        end
+    end
+    return A_clean
+end
+
+"""
+    extract_netcdf_campaign(nc_file)
+
+Flexible NetCDF reader with multi-campaign support (CASES-99, GABLS3, SCMs).
+Dynamically infers spatial/temporal dimensions, scales units, and aligns matrices to (Time × Height).
+"""
+function extract_netcdf_campaign(nc_file::String)
+    NCDataset(nc_file, "r") do ds
+        # Helper for case-insensitive variable lookup
+        function fetch_var(names)
+            for n in names
+                if haskey(ds, n)
+                    return ds[n]
+                end
+                for k in keys(ds)
+                    if lowercase(k) == lowercase(n)
+                        return ds[k]
+                    end
+                end
+            end
+            return nothing
+        end
+
+        time_ds = fetch_var(["time", "Time", "datetime", "base_time"])
+        u_ds = fetch_var(["u", "U", "u_wind", "eastward_wind", "spd", "Spd"])
+        v_ds = fetch_var(["v", "V", "v_wind", "northward_wind", "dir", "Dir"])
+        θ_ds = fetch_var(["theta", "potential_temp", "pot_temp", "THETA", "temp", "T", "tdry", "tc"])
+
+        if u_ds === nothing || θ_ds === nothing
+            error("Required profile variables (wind/temperature) not found in NetCDF schema.")
+        end
+
+        # Read native profile data arrays
+        u_raw = Array(u_ds)
+        θ_raw = Array(θ_ds)
+        v_raw = v_ds !== nothing ? Array(v_ds) : zeros(Float64, size(u_raw))
+
+        # Squeeze singleton dimensions if ndims > 2
+        u_raw = dropdims(u_raw; dims=Tuple(i for i in 1:ndims(u_raw) if size(u_raw, i) == 1))
+        θ_raw = dropdims(θ_raw; dims=Tuple(i for i in 1:ndims(θ_raw) if size(θ_raw, i) == 1))
+        v_raw = dropdims(v_raw; dims=Tuple(i for i in 1:ndims(v_raw) if size(v_raw, i) == 1))
+
+        # 1. Parse Time Axis
+        if time_ds !== nothing
+            t_data = Array(time_ds)
+            if ndims(t_data) > 1
+                t_data = t_data[:]
+            end
+            if eltype(t_data) <: Dates.AbstractTime
+                times = (Dates.datetime2unix.(t_data) .- Dates.datetime2unix(t_data[1])) ./ 3600.0
+            else
+                times_raw = normalize_campaign_array(t_data)
+                valid_t = filter(!isnan, times_raw)
+                if !isempty(valid_t) && maximum(valid_t) > 1000.0
+                    times_raw = (times_raw .- valid_t[1]) ./ 3600.0
+                end
+                times = times_raw
+            end
+        else
+            times = Float64.(collect(1:size(u_raw, 1)))
+        end
+        nt = length(times)
+
+        # 2. Infer nz & Align profile matrices to (nt × nz)
+        s1, s2 = size(u_raw)
+        if s1 == nt && s2 != nt
+            nz = s2
+            u_2d = normalize_campaign_array(u_raw)
+            v_2d = normalize_campaign_array(v_raw)
+            θ_2d = normalize_campaign_array(θ_raw)
+        elseif s2 == nt && s1 != nt
+            nz = s1
+            u_2d = permutedims(normalize_campaign_array(u_raw), (2, 1))
+            v_2d = permutedims(normalize_campaign_array(v_raw), (2, 1))
+            θ_2d = permutedims(normalize_campaign_array(θ_raw), (2, 1))
+        else
+            # Fallback for square grids
+            nz = (s1 == nt) ? s2 : s1
+            u_2d = (s1 == nt) ? normalize_campaign_array(u_raw) : permutedims(normalize_campaign_array(u_raw), (2, 1))
+            v_2d = (s1 == nt) ? normalize_campaign_array(v_raw) : permutedims(normalize_campaign_array(v_raw), (2, 1))
+            θ_2d = (s1 == nt) ? normalize_campaign_array(θ_raw) : permutedims(normalize_campaign_array(θ_raw), (2, 1))
+        end
+
+        # 3. Resolve Vertical Height Coordinate (z) matching nz
+        z_candidates = ["height", "Height", "level", "z", "altitude", "lev", "obs_height"]
+        z = Float64[]
+
+        for z_name in z_candidates
+            var_cand = fetch_var([z_name])
+            if var_cand !== nothing
+                z_arr = Array(var_cand)
+                # Handle 2D height arrays (nz × nt) or (nt × nz)
+                if ndims(z_arr) == 2
+                    if size(z_arr, 1) == nz
+                        z_arr = vec(mean(z_arr, dims=2))
+                    elseif size(z_arr, 2) == nz
+                        z_arr = vec(mean(z_arr, dims=1))
+                    end
+                elseif ndims(z_arr) > 2
+                    z_arr = vec(z_arr)
+                end
+
+                z_clean = filter(!isnan, normalize_campaign_array(z_arr))
+                if length(z_clean) == nz
+                    z = z_clean
+                    break
+                end
+            end
+        end
+
+        # Fallback if no matching z variable of length nz was found
+        if isempty(z)
+            z = Float64.(collect(1:nz))
+        end
+
+        # 4. Temperature Unit Scaling (Celsius to Kelvin)
+        valid_θ = filter(!isnan, θ_2d)
+        if !isempty(valid_θ) && mean(valid_θ) < 100.0
+            θ_2d = θ_2d .+ 273.15
+        end
+
+        return times, z, θ_2d, u_2d, v_2d, 9.81
+    end
+end
+
+
+# --- 4. Diagnostic Calculation (Profiles & Derivatives) ---
+
+"""
+    process_campaign_profiles(times, z, θ, u, v, g; Ri_bound=2.0, S2_min=1e-8)
+
+Computes buoyancy frequency N², shear S², raw Ri_g_raw, bounded Ri_g_reg,
+regularization error E_Ri, vertical gradient ∂Ri/∂z, and curvature ∂²Ri/∂z².
+"""
+function process_campaign_profiles(times, z, θ, u, v, g; Ri_bound::Float64=2.0, S2_min::Float64=1e-8)
     nt = length(times)
     nz = length(z)
-    
-    # Calculate mid-level heights for staggered vertical gradients
-    z_mid = 0.5 .* (z[1:end-1] .+ z[2:end])
+
+    z_mid = 0.5 .* (z[1:(end-1)] .+ z[2:end])
     nz_mid = length(z_mid)
-    
-    # Pre-allocate gradient arrays
-    N2 = zeros(nt, nz_mid)
-    S2 = zeros(nt, nz_mid)
-    Ri_g = zeros(nt, nz_mid)
-    
-    g_over_θ0 = g / θ0
-    
+
+    N2 = fill(NaN, nt, nz_mid)
+    S2 = fill(NaN, nt, nz_mid)
+    Ri_raw = fill(NaN, nt, nz_mid)
+    Ri_reg = fill(NaN, nt, nz_mid)
+    E_Ri = fill(NaN, nt, nz_mid)
+
     for i in 1:nt
         for k in 1:nz_mid
             Δz = z[k+1] - z[k]
-            
-            # Finite-difference gradients on staggered grid levels
-            θ_z = (θ[i, k+1] - θ[i, k]) / Δz
-            u_z = (u[i, k+1] - u[i, k]) / Δz
-            v_z = (v[i, k+1] - v[i, k]) / Δz
-            
-            # Buoyancy frequency squared (buoyancy gradient)
-            N2[i, k] = g_over_θ0 * θ_z
-            
-            # Vertical wind shear squared
-            S2[i, k] = u_z^2 + v_z^2
-            
-            # Compute safe & smoothly clamped Richardson number
-            # If values are missing/NaN, populate with NaN
-            if isnan(N2[i, k]) || isnan(S2[i, k])
-                Ri_g[i, k] = NaN
-            else
-                Ri_g[i, k] = compute_safe_rig(N2[i, k], S2[i, k]; Ri_bound=Ri_bound, ϵ_s=ϵ_s)
+            θ_mid = 0.5 * (θ[i, k] + θ[i, k+1])
+
+            if !isnan(θ_mid) && θ_mid > 0 && !isnan(u[i, k]) && !isnan(u[i, k+1])
+                θ_z = (θ[i, k+1] - θ[i, k]) / Δz
+                u_z = (u[i, k+1] - u[i, k]) / Δz
+                v_z = (v[i, k+1] - v[i, k]) / Δz
+
+                N2[i, k] = (g / θ_mid) * θ_z
+                S2[i, k] = u_z^2 + v_z^2
+
+                if S2[i, k] > 0
+                    Ri_raw[i, k] = N2[i, k] / S2[i, k]
+                end
+
+                S2_clamped = max(S2[i, k], S2_min)
+                Ri_reg[i, k] = Ri_bound * tanh(N2[i, k] / (Ri_bound * S2_clamped))
+                E_Ri[i, k] = Ri_reg[i, k] - Ri_raw[i, k]
             end
         end
     end
-    
-    return z_mid, N2, S2, Ri_g
+
+    # First derivative ∂Ri/∂z
+    z_mid_mid = 0.5 .* (z_mid[1:(end-1)] .+ z_mid[2:end])
+    Ri_z = fill(NaN, nt, nz_mid - 1)
+    for i in 1:nt
+        for k in 1:(nz_mid-1)
+            Δz_mid = z_mid[k+1] - z_mid[k]
+            if !isnan(Ri_reg[i, k+1]) && !isnan(Ri_reg[i, k])
+                Ri_z[i, k] = (Ri_reg[i, k+1] - Ri_reg[i, k]) / Δz_mid
+            end
+        end
+    end
+
+    # Second derivative ∂²Ri/∂z² (Non-uniform central difference)
+    z_curv = z_mid[2:(end-1)]
+    Ri_zz = fill(NaN, nt, length(z_curv))
+    for i in 1:nt
+        for k in 2:(nz_mid-1)
+            h1 = z_mid[k] - z_mid[k-1]
+            h2 = z_mid[k+1] - z_mid[k]
+
+            ri_prev = Ri_reg[i, k-1]
+            ri_curr = Ri_reg[i, k]
+            ri_next = Ri_reg[i, k+1]
+
+            if !isnan(ri_prev) && !isnan(ri_curr) && !isnan(ri_next)
+                dRi_dn = (ri_curr - ri_prev) / h1
+                dRi_up = (ri_next - ri_curr) / h2
+                Ri_zz[i, k-1] = 2.0 * (dRi_up - dRi_dn) / (h1 + h2)
+            end
+        end
+    end
+
+    return z_mid, z_mid_mid, z_curv, N2, S2, Ri_raw, Ri_reg, E_Ri, Ri_z, Ri_zz
 end
 
 
-"""
-    create_ri_heatmap(times, z_mid, Ri_g; campaign_name="Synthetic SBL", output_file="ri_heatmap.png")
+# --- 5. Diagnostic Suite Visualization ---
 
-Renders a publication-quality spatial-temporal heatmap of the regularized Richardson number.
-Employs an elegant diverging color scale, highlights the critical threshold (Ri_c = 0.25) with a 
-dashed contour line, and structures labels to convey immediate physical insights.
 """
-function create_ri_heatmap(times, z_mid, Ri_g; campaign_name="Synthetic SBL", output_file="ri_heatmap.png")
-    # Setup Figure and custom thematic elements
-    # CairoMakie guarantees crisp vector and high-DPI rasterization
-    fig = Figure(size = (1000, 650), font = "DejaVu Sans")
-    
-    # Title-as-takeaway: Tells the scientific story
-    title_str = "Nocturnal Stable Boundary Layer: Low-Level Jet Shear Suppresses Richardson Number below Jet Core"
-    if campaign_name != "Synthetic SBL"
-        title_str = "Campaign $(campaign_name): Spatial-Temporal Gradient Richardson Number Profile"
-    end
-    
-    ax = Axis(fig[1, 1],
-        title = title_str,
-        xlabel = campaign_name == "Synthetic SBL" ? "Hours Since Sunset (t)" : "Time Index / Date",
-        ylabel = "Height Above Ground z (m)",
-        titlesize = 14,
-        titlealign = :left,
-        titlefont = :bold,
-        xgridstyle = :dash, ygridstyle = :dash,
-        xgridcolor = :gray90, ygridcolor = :gray90,
-        xminorticks = IntervalsBetween(5),
-        yminorticks = IntervalsBetween(5),
-        xminorticksvisible = true, yminorticksvisible = true
-    )
-    
-    # 1. Plot Heatmap
-    # We map the bounded Richardson number on a diverging :RdBu colormap (reversed to make 
-    # blue represent stable stratification Ri_g > 0 and red represent unstable mixing Ri_g < 0).
-    # Since stable stratification (blue) and unstable shear (red) are physical opposites, 
-    # the neutral threshold (0.0) aligns perfectly with the white/subdued midpoint.
-    hm = heatmap!(ax, times, z_mid, Ri_g;
-        colormap = Reverse(:RdBu),
-        colorrange = (-1.5, 1.5), # Highlight detailed structure around neutral-to-moderately-stable regimes
-        nan_color = :gray93
-    )
-    
-    # 2. Add Critical Boundary Contour (Ri_c = 0.25)
-    # The critical Richardson number represents the physical transition where the turbulent engine dies.
-    # We superimpose a dashed black contour line to mark this exact boundary.
+    create_gspt_diagnostic_figure(...)
+
+Generates the 4-panel diagnostic figure.
+"""
+function create_gspt_diagnostic_figure(times, z_mid, z_mid_mid, z_curv, Ri_raw, Ri_reg, E_Ri, Ri_z, Ri_zz;
+    campaign_name="15-level idealized sparse SBL grid",
+    output_file="ri_gspt_diagnostic.png")
+
+    fig = Figure(size=(1250, 1100), font="DejaVu Sans")
+    Label(fig[0, 1:2], "Atmospheric Boundary Layer: Gradient Richardson Number Topology & Fold Dynamics",
+        fontsize=16, font=:bold, halign=:left)
+
+    # Panel A: Ri_reg
+    ax1 = Axis(fig[1, 1], title="A. Regularized Richardson Field (Ri_g^reg)", ylabel="Height z (m)")
+    hm1 = heatmap!(ax1, times, z_mid, Ri_reg, colormap=Reverse(:RdBu), colorrange=(-1.5, 1.5), nan_color=:gray90)
     try
-        contour!(ax, times, z_mid, Ri_g;
-            levels = [0.25],
-            color = :black,
-            linewidth = 2.0,
-            linestyle = :dash
-        )
-        # Add visual legend helper in a text box
-        text!(ax, minimum(times) + 0.5, maximum(z_mid) - 15.0, 
-            text = "--- Ri_c = 0.25 (Turbulent Transition)", 
-            color = :black, 
-            fontsize = 11,
-            font = :bold
-        )
+        contour!(ax1, times, z_mid, Ri_reg, levels=[0.25], color=:black, linewidth=1.5, linestyle=:dash)
     catch
-        @warn "Contour plotting skipped due to data bounds or package limitation."
+        ;
     end
-    
-    # 3. Add Annotation Callouts for Key SBL Dynamics
-    if campaign_name == "Synthetic SBL"
-        # Label the unstable ground layer under surface warming or high shear
-        text!(ax, 2.0, 10.0, text = "Shear-Generated Turbulence (Ri < 0.25)", color = :darkred, fontsize = 10, font = :bold)
-        # Label the supercritical laminar layer above the jet where mixing ceases
-        text!(ax, 8.0, 160.0, text = "Supercritical Stratified Layer (Ri > Ri_c)", color = :darkblue, fontsize = 10, font = :bold)
-        # Label descending jet core shear trace
-        text!(ax, 5.0, 85.0, text = "Desending LLJ Shear Zone", color = :black, fontsize = 10, font = :italic)
+    Colorbar(fig[1, 2], hm1, label="Ri_g^reg", ticks=-1.5:0.5:1.5)
+
+    # Panel B: E_Ri Distortion
+    ax2 = Axis(fig[2, 1], title="B. Visualization Regularization Bias (E_Ri = Ri_g^reg - Ri_g^raw)", ylabel="Height z (m)")
+    hm2 = heatmap!(ax2, times, z_mid, E_Ri, colormap=:PuOr, colorrange=(-0.5, 0.5), nan_color=:gray90)
+    Colorbar(fig[2, 2], hm2, label="ΔRi", ticks=-0.5:0.25:0.5)
+
+    # Panel C: First Derivative ∂Ri/∂z
+    ax3 = Axis(fig[3, 1], title="C. First Derivative (∂Ri_g^reg / ∂z) — Fold Line Tracking", ylabel="Height z (m)")
+    hm3 = heatmap!(ax3, times, z_mid_mid, Ri_z, colormap=:curl, colorrange=(-0.05, 0.05), nan_color=:gray90)
+    try
+        contour!(ax3, times, z_mid_mid, Ri_z, levels=[0.0], color=:magenta, linewidth=2.0)
+    catch
+        ;
     end
-    
-    # 4. Add Colorbar with Clean Interval Ticks
-    cb = Colorbar(fig[1, 2], hm,
-        label = "Regularized Gradient Richardson Number (Ri_g)",
-        labelsize = 12,
-        ticks = (-1.5:0.5:1.5, ["<-1.5 (Convective)", "-1.0", "-0.5", "0.0 (Neutral)", "0.5 (Stable)", "1.0", ">1.5 (Laminar)"]),
-        width = 20,
-        ticklabelsize = 10
-    )
-    
-    # 5. Add Source Footnote
-    Label(fig[2, 1], "Source: Campaign Dataset Archive, Z0HR Safe & Smooth Regularization (ϵ_s = 1e-12, Ri_bound = 2.0)",
-        fontsize = 10, color = :gray50, halign = :left, padding = (0, 0, 10, 0))
-    
-    # Apply tight layout padding and save high-fidelity output
-    rowsize!(fig.layout, 1, Relative(0.92))
-    save(output_file, fig, px_per_unit = 2.0) # Double pixel resolution (300 DPI equivalent)
-    println("SUCCESS: High-fidelity spatial-temporal heatmap saved to '$(output_file)'")
-    
+    Colorbar(fig[3, 2], hm3, label="∂Ri / ∂z (m⁻¹)", ticks=-0.05:0.025:0.05)
+
+    # Panel D: Vertical Curvature ∂²Ri/∂z²
+    ax4 = Axis(fig[4, 1], title="D. Vertical Curvature (∂²Ri_g^reg / ∂z²) — Cusp Catastrophe Loci",
+        xlabel="Time Axis", ylabel="Height z (m)")
+    hm4 = heatmap!(ax4, times, z_curv, Ri_zz, colormap=:PRGn, colorrange=(-0.005, 0.005), nan_color=:gray90)
+    try
+        contour!(ax4, times, z_mid_mid, Ri_z, levels=[0.0], color=:magenta, linewidth=1.5)
+        contour!(ax4, times, z_curv, Ri_zz, levels=[0.0], color=:orange, linewidth=1.5, linestyle=:dash)
+    catch
+        ;
+    end
+    Colorbar(fig[4, 2], hm4, label="∂²Ri / ∂z² (m⁻²)", ticks=-0.005:0.0025:0.005)
+
+    Label(fig[5, 1:2], "Dataset: $campaign_name | Magenta: ∂Ri/∂z=0 (Folds), Orange: ∂²Ri/∂z²=0 (Inflections)",
+        fontsize=10, color=:gray40, halign=:left, padding=(0, 0, 10, 0))
+
+    save(output_file, fig, px_per_unit=2.0)
+    println("SUCCESS: Graphic rendered to '$(output_file)'")
     return fig
 end
 
 
-"""
-    main(args)
+# --- 6. Pipeline Execution ---
 
-Main execution routine. If a NetCDF filepath is passed in `args[1]`, the script parses 
-the observational variables. Otherwise, it triggers the synthetic SBL testbed.
-"""
-function main(args::Vector{String} = ARGS)
+function main(args::Vector{String}=ARGS)
     println("==========================================================================")
-    println("   Z0HR Safe & Smooth Richardson Heatmap Ingestion & Visualization Suite  ")
+    println("  GSPT SBL Diagnostic Suite: Richardson Number Topology & Fold Tracking  ")
     println("==========================================================================")
-    
-    # Define hyperparameter defaults
-    Ri_bound = 2.0
-    ϵ_s = 1e-12
-    
+
     if length(args) >= 1 && isfile(args[1])
         nc_file = args[1]
-        println("Ingesting Campaign NetCDF Dataset: '$(nc_file)'...")
-        
-        try
-            NCDataset(nc_file, "r") do ds
-                println("Checking NetCDF schema attributes...")
-                # Fetch dimensions and coordinates
-                times = haskey(ds, "time") ? ds["time"][:] : collect(1:size(ds["u"], 1))
-                z = haskey(ds, "height") ? ds["height"][:] : (haskey(ds, "level") ? ds["level"][:] : collect(1:size(ds["u"], 2)))
-
-                # NetCDF time dims are often DateTime; convert to elapsed hours for plotting/arithmetic
-                if eltype(times) <: Dates.AbstractTime
-                    times = Dates.datetime2unix.(times) .- Dates.datetime2unix(times[1])
-                    times = times ./ 3600.0
-                end
-                
-                # Fetch raw physical variables
-                u = ds["u"][:, :]
-                v = ds["v"][:, :]
-                θ = haskey(ds, "theta") ? ds["theta"][:, :] : (haskey(ds, "potential_temp") ? ds["potential_temp"][:, :] : ds["temp"][:, :])
-                
-                # Deduce metadata reference fields
-                g = 9.81
-                θ0 = mean(filter(!isnan, θ))
-                
-                println("Computing gradients across $(length(times)) timestamps and $(length(z)) vertical levels...")
-                z_mid, N2, S2, Ri_g = process_campaign_profiles(times, z, θ, u, v, θ0, g; Ri_bound=Ri_bound, ϵ_s=ϵ_s)
-                
-                output_name = replace(basename(nc_file), ".nc" => "_ri_heatmap.png")
-                create_ri_heatmap(times, z_mid, Ri_g; campaign_name=basename(nc_file), output_file=output_name)
-            end
-        catch e
-            @error "Failed to parse NetCDF campaign file. Error: $e"
-            println("Falling back to SBL Synthetic testbed execution...")
-            run_synthetic_flow(Ri_bound, ϵ_s)
-        end
+        println("Ingesting Campaign Dataset: '$nc_file'")
+        times, z, θ, u, v, g = extract_netcdf_campaign(nc_file)
+        camp_name = basename(nc_file)
+        out_name = replace(camp_name, ".nc" => "_gspt_diagnostic.png")
     else
-        println("No valid NetCDF campaign file provided as argument.")
-        println("Executing high-fidelity physical SBL synthetic demonstration...")
-        run_synthetic_flow(Ri_bound, ϵ_s)
+        println("Executing on 15-level idealized sparse SBL grid...")
+        times, z, θ, u, v, g = generate_synthetic_sbl_data()
+        camp_name = "15-level idealized sparse SBL grid"
+        out_name = "ri_gspt_diagnostic.png"
     end
-    
+
+    z_mid, z_mid_mid, z_curv, N2, S2, Ri_raw, Ri_reg, E_Ri, Ri_z, Ri_zz = process_campaign_profiles(times, z, θ, u, v, g)
+
+    create_gspt_diagnostic_figure(times, z_mid, z_mid_mid, z_curv, Ri_raw, Ri_reg, E_Ri, Ri_z, Ri_zz;
+        campaign_name=camp_name, output_file=out_name)
+
     println("==========================================================================")
     return 0
-end
-
-function run_synthetic_flow(Ri_bound, ϵ_s)
-    times, z, θ, u, v, θ0, g = generate_synthetic_sbl_data()
-    println("Processing SBL gradients (15 standardized levels, 73 contiguous intervals)...")
-    z_mid, N2, S2, Ri_g = process_campaign_profiles(times, z, θ, u, v, θ0, g; Ri_bound=Ri_bound, ϵ_s=ϵ_s)
-    output_path = joinpath(pwd(), "ri_temporal_spatial_heatmap.png")
-    create_ri_heatmap(times, z_mid, Ri_g; campaign_name="Synthetic SBL", output_file=output_path)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     exit(main())
 else
-    # Automatically execute synthetic demo when evaluated in notebook/REPL context
-    run_synthetic_flow(2.0, 1e-12)
+    main(String[])
 end
