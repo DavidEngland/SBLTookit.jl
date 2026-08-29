@@ -1,0 +1,89 @@
+\documentclass[11pt,fleqn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{cite}
+
+\geometry{letterpaper, margin=1in}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+\title{\textbf{Spurious Finite-Time Modal Blowup in Low-Order Galerkin Approximations of Fast--Slow Stably Stratified Boundary Layers}}
+\author{\textbf{David England} \\ \textit{UAH.Edu BLM}}
+\email{david.england@uah.edu}
+\orcid{0000-0001-2095-6646}
+\date{\today}
+
+\begin{document}
+
+\subsection{Problem: Critical Manifold and Fold Structure of a Fast--Slow SBL Model}
+
+\paragraph{Setup.} The stably stratified boundary layer (SBL) is modeled as a singularly perturbed system for turbulent kinetic energy $E$ and mean shear $S$, with timescale separation $0 < \epsilon \ll 1$:
+\begin{align}
+\epsilon \frac{dE}{dt} &= f(E,S) = l \sqrt{E + \delta} \left( S^2 - \phi N^2 - c_b N^2 \frac{E}{E + \alpha} \right) - \frac{E^{3/2}}{l}, \label{eq:fast_tke} \\
+\frac{dS}{dt} &= g(E,S) = G - c_1 E S - c_2 S, \label{eq:slow_shear}
+\end{align}
+on the physical domain $\mathcal{D} = \{(E,S) \in \mathbb{R}^2 : E \ge 0\}$. Here $l$ is the mixing length, $N^2$ the (constant) Brunt--Väisälä frequency, $G$ the geostrophic forcing, $\phi > 0$ a stability-correction coefficient, $\delta, \alpha > 0$ regularization/saturation constants, $c_b = 0.50$, and $c_1 = 1.80\ \text{s\,m}^{-2}$.
+
+Define the critical manifold
+\begin{equation}
+\mathcal{C}_0 = \{(E,S) \in \mathcal{D} : f(E,S) = 0\}.
+\end{equation}
+
+\paragraph{Tasks.}
+
+\begin{enumerate}
+    \item \textbf{Dimensional consistency.} Determine the physical dimensions required of $\delta$, $\alpha$, and $\phi$ so that every term in $f(E,S)$ carries units of $\text{m}^2\,\text{s}^{-3}$, and so that $f$ is well-defined (in particular, so that $E/(E+\alpha)$ is dimensionless). Similarly, verify that $c_1 = 1.80\ \text{s\,m}^{-2}$ is the unique choice of units making $g(E,S)$ consistent with $[G] = \text{s}^{-2}$, and state the required dimension of $c_2$.
+
+    \item \textbf{$C^1$-continuity at $E=0$.} Explain why, without the regularization $\delta > 0$, $f$ fails to be $C^1$ on $\mathcal{D}$ at $E = 0$, and show that $\delta > 0$ restores $C^1$-continuity there.
+
+    \item \textbf{Fast eigenvalue.} Derive an explicit closed-form expression for
+    \begin{equation}
+        \lambda_f(E,S) \equiv \frac{\partial f}{\partial E}(E,S),
+    \end{equation}
+    showing all steps (product rule on $\sqrt{E+\delta}$, quotient/chain rule on $E/(E+\alpha)$, and the $E^{3/2}/l$ term).
+
+    \item \textbf{Local structure of $\mathcal{C}_0$.} State and apply the appropriate version of the implicit function theorem to show that at any point $(E^*,S^*) \in \mathcal{C}_0$ with $\lambda_f(E^*,S^*) \neq 0$, the set $\mathcal{C}_0$ is locally the graph of a $C^1$ function $E = E^*(S)$. What goes wrong at points where $\lambda_f = 0$?
+
+    \item \textbf{Branch classification.} Using your expression for $\lambda_f$, classify the points of $\mathcal{C}_0$ into
+    \begin{itemize}
+        \item points where $\lambda_f < 0$,
+        \item points where $\lambda_f > 0$,
+        \item points where $\lambda_f = 0$,
+    \end{itemize}
+    and, for each case, state (with justification via the fast subsystem $\epsilon \dot E = f(E,S)$, $S$ frozen) whether nearby trajectories are attracted to or repelled from $\mathcal{C}_0$, and on what timescale.
+
+    \item \textbf{Fold conditions.} A candidate fold (saddle-node) point $(E_0,S_0)$ satisfies $f(E_0,S_0)=0$ and $f_E(E_0,S_0)=0$.
+    \begin{enumerate}[label=(\roman*)]
+        \item Write down this pair of equations explicitly in terms of $E_0, S_0$ and the model parameters.
+        \item Compute $f_{EE}(E_0,S_0)$ and $f_S(E_0,S_0)$ explicitly.
+        \item State precisely the nondegeneracy condition ($f_{EE} \neq 0$) and transversality condition ($f_S \neq 0$) needed for $(E_0,S_0)$ to be a generic saddle-node fold of the fast subsystem, and explain briefly (one or two sentences each) what each condition rules out.
+    \end{enumerate}
+
+    \item \textbf{Scaling near a fold.} Consider a nondegenerate fold point $(E_0, S_0)$ as in Task 6, and suppose $S(t)$ drifts slowly through $S_0$ at rate $\dot S \approx g(E_0,S_0) \equiv v_0 \neq 0$ (from the slow equation). By locally approximating
+    \[
+    f(E,S) \approx f_S(E_0,S_0)(S - S_0) + \tfrac12 f_{EE}(E_0,S_0)(E-E_0)^2
+    \]
+    and substituting into $\epsilon \dot E = f(E,S)$ with $S - S_0 \approx v_0 t$, derive the scaling exponent relating the physical-time duration of the fold-crossing transient to $\epsilon$. (You should recover a fractional power of $\epsilon$; state it and briefly justify why it is not $\mathcal{O}(\epsilon)$.)
+
+    \item \textbf{Reduced slow flow and hysteresis.} On an attracting branch, write the reduced (Fenichel slow) dynamics as
+    \[
+    \frac{dS}{dt} = g(E^*(S), S),
+    \]
+    where $E = E^*(S)$ solves $f=0$ on that branch. Sketch qualitatively how $E^*(S)$ can be multivalued (S-shaped) in the presence of a fold pair, and explain how this could produce hysteresis in $E$ as $S$ (or the forcing $G$) is varied slowly up and down — i.e., relate the fold structure to abrupt collapse and re-establishment of turbulence in the SBL.
+\end{enumerate}
+
+\emd{document}

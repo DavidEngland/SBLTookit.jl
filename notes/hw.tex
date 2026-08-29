@@ -1,0 +1,61 @@
+\documentclass[11pt,fleqn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{cite}
+
+\geometry{letterpaper, margin=1in}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+\author{\textbf{PhD Candidate:} \textit{[Student Name]} \\ \textbf{Supervisor:} David England (UAH.Edu BLM)}
+% \email{david.england@uah.edu}
+\date{\today}
+
+\begin{document}
+
+\section{Core model and fast--slow structure}
+
+Consider a singularly perturbed system for turbulent kinetic energy $E$ and
+mean shear $S$, with timescale separation $0 < \epsilon \ll 1$:
+\begin{align}
+\epsilon \frac{dE}{dt} &= f(E,S) = l \sqrt{E + \delta} \left( S^2 - \phi N^2 - c_b N^2 \frac{E}{E + \alpha} \right) - \frac{E^{3/2}}{l}, \label{eq:fast_tke} \\
+\frac{dS}{dt} &= g(E,S) = G - c_1 E S - c_2 S, \label{eq:slow_shear}
+\end{align}
+on the physical domain $\mathcal{D} = \{(E,S) \in \mathbb{R}^2 : E \ge 0\}$.
+Here $l$ is the mixing length, $N^2$ the (constant) Brunt--Väisälä frequency,
+$G$ the geostrophic forcing, $\phi > 0$ a stability-correction coefficient,
+$\delta, \alpha > 0$ regularization/saturation constants, $c_b = 0.50$, and
+$c_1 = 1.80\ \text{s\,m}^{-2}$.
+
+Show that the fast eigenvalue
+\begin{equation}
+    \lambda_f(E,S) \equiv \frac{\partial f}{\partial E}(E,S)
+\end{equation}
+determines the local stability of the critical manifold $\mathcal{C}_0 = \{(E,S) \in \mathcal{D} : f(E,S) = 0\}$, and classify branches of $\mathcal{C}_0$ into attracting ($\lambda_f<0$), repelling ($\lambda_f>0$), and fold ($\lambda_f=0$) segments.
+
+Derive an explicit closed-form expression for
+    \begin{equation}
+        \lambda_f(E,S) \equiv \frac{\partial f}{\partial E}(E,S),
+    \end{equation}
+    showing all steps (product rule on $\sqrt{E+\delta}$, quotient/chain rule on $E/(E+\alpha)$, and the $E^{3/2}/l$ term).
+
+    You should obtain:
+\begin{equation}
+\lambda_f(E, S) = \frac{l\left(S^2 - \phi N^2\right)}{2\sqrt{E+\delta}} - c_b N^2 l \left[ \frac{E}{2\sqrt{E+\delta}(E+\alpha)} + \frac{\alpha\sqrt{E+\delta}}{(E+\alpha)^2} \right] - \frac{3\sqrt{E}}{2l}.
+\end{equation}
+
+\end{document}

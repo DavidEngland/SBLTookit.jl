@@ -27,3 +27,15 @@ Thumbs.db
 *.v*.*
 
 plots/
+
+#Latex auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+
+paper/

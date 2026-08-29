@@ -1,0 +1,155 @@
+\documentclass[11pt,fleqn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{cite}
+
+\geometry{letterpaper, margin=1in}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+\title{\textbf{Spurious Finite-Time Modal Blowup in Low-Order Galerkin Approximations of Fast--Slow Stably Stratified Boundary Layers:}\\
+A PhD Research Project}
+\author{\textbf{PhD Candidate:} \textit{[Student Name]} \\ \textbf{Supervisor:} David England (UAH.Edu BLM)}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Project overview}
+
+The stably stratified atmospheric boundary layer (SBL) exhibits fast--slow dynamics
+between turbulent kinetic energy (TKE) and mean shear, with strong timescale
+separation and sensitivity to stratification. Low-order Galerkin closures and
+single-column models can display spurious finite-time blowup or collapse of
+modal amplitudes, obscuring the physical interpretation of turbulence
+intermittency and regime transitions.
+
+This PhD project will develop a rigorous fast--slow dynamical-systems framework
+for a prototypical SBL model, characterize its critical manifold and fold
+structure, and relate these features to numerical pathologies in low-order
+Galerkin approximations and operational boundary-layer schemes.
+
+\section{Core model and fast--slow structure}
+
+We consider a singularly perturbed system for turbulent kinetic energy $E$ and
+mean shear $S$, with timescale separation $0 < \epsilon \ll 1$:
+\begin{align}
+\epsilon \frac{dE}{dt} &= f(E,S) = l \sqrt{E + \delta} \left( S^2 - \phi N^2 - c_b N^2 \frac{E}{E + \alpha} \right) - \frac{E^{3/2}}{l}, \label{eq:fast_tke} \\
+\frac{dS}{dt} &= g(E,S) = G - c_1 E S - c_2 S, \label{eq:slow_shear}
+\end{align}
+on the physical domain $\mathcal{D} = \{(E,S) \in \mathbb{R}^2 : E \ge 0\}$.
+Here $l$ is the mixing length, $N^2$ the (constant) Brunt--Väisälä frequency,
+$G$ the geostrophic forcing, $\phi > 0$ a stability-correction coefficient,
+$\delta, \alpha > 0$ regularization/saturation constants, $c_b = 0.50$, and
+$c_1 = 1.80\ \text{s\,m}^{-2}$. The critical manifold is
+\begin{equation}
+\mathcal{C}_0 = \{(E,S) \in \mathcal{D} : f(E,S) = 0\}.
+\end{equation}
+
+\section{Research objectives}
+
+\subsection{Objective 1: Well-posedness and regularity of the fast subsystem}
+
+\begin{itemize}
+    \item Establish dimensional consistency of $f(E,S)$ and $g(E,S)$, determining
+    the required units of $\delta$, $\alpha$, $\phi$, and $c_2$ so that
+    $f$ carries units of $\mathrm{m}^2\,\mathrm{s}^{-3}$ and $E/(E+\alpha)$ is
+    dimensionless, with $[G] = \mathrm{s}^{-2}$.
+    \item Analyze $C^1$-regularity of $f$ on $\mathcal{D}$, showing that
+    $\delta>0$ restores differentiability at $E=0$ and yields a well-posed fast
+    subsystem for geometric singular perturbation theory.
+\end{itemize}
+
+\subsection{Objective 2: Critical manifold geometry and fold structure}
+
+\begin{itemize}
+    \item Derive the fast eigenvalue
+    \begin{equation}
+        \lambda_f(E,S) \equiv \frac{\partial f}{\partial E}(E,S),
+    \end{equation}
+    in closed form, including the product rule on $\sqrt{E+\delta}$, the
+    quotient/chain rule on $E/(E+\alpha)$, and the $E^{3/2}/l$ term.
+    \item Apply the implicit function theorem to show that at points
+    $(E^*,S^*) \in \mathcal{C}_0$ with $\lambda_f(E^*,S^*) \neq 0$, the set
+    $\mathcal{C}_0$ is locally the graph of a $C^1$ function $E = E^*(S)$, and
+    characterize the loss of regularity at $\lambda_f=0$.
+    \item Classify branches of $\mathcal{C}_0$ into attracting ($\lambda_f<0$),
+    repelling ($\lambda_f>0$), and fold ($\lambda_f=0$) segments, using the fast
+    subsystem $\epsilon \dot E = f(E,S)$ with $S$ frozen to determine the
+    timescale of attraction/repulsion.
+\end{itemize}
+
+\subsection{Objective 3: Nondegenerate folds and slow passage}
+
+\begin{itemize}
+    \item Identify candidate fold points $(E_0,S_0)$ satisfying
+    $f(E_0,S_0)=0$ and $f_E(E_0,S_0)=0$, and compute $f_{EE}(E_0,S_0)$ and
+    $f_S(E_0,S_0)$ explicitly.
+    \item Formulate and verify nondegeneracy ($f_{EE}\neq 0$) and transversality
+    ($f_S\neq 0$) conditions for generic saddle-node folds of the fast
+    subsystem, interpreting each condition in terms of excluded degeneracies.
+    \item For a nondegenerate fold with slow drift
+    $\dot S \approx g(E_0,S_0) \equiv v_0 \neq 0$, approximate
+
+
+\[
+    f(E,S) \approx f_S(E_0,S_0)(S - S_0) + \tfrac12 f_{EE}(E_0,S_0)(E-E_0)^2,
+    \]
+
+
+    substitute $S-S_0 \approx v_0 t$ into $\epsilon \dot E = f(E,S)$, and
+    derive the fractional scaling exponent relating the fold-crossing transient
+    duration to $\epsilon$ (showing it is not $\mathcal{O}(\epsilon)$).
+\end{itemize}
+
+\subsection{Objective 4: Reduced slow flow, hysteresis, and Galerkin blowup}
+
+\begin{itemize}
+    \item On attracting branches, derive the reduced slow dynamics
+
+
+\[
+    \frac{dS}{dt} = g(E^*(S), S),
+    \]
+
+
+    where $E^*(S)$ solves $f(E,S)=0$ on the attracting portion of
+    $\mathcal{C}_0$.
+    \item Analyze multivalued (S-shaped) $E^*(S)$ in the presence of fold pairs,
+    and show how slow variation of $S$ or forcing $G$ produces hysteresis in
+    $E$, corresponding to abrupt collapse and re-establishment of turbulence in
+    the SBL.
+    \item Connect the fold geometry and slow passage phenomena to spurious
+    finite-time modal blowup in low-order Galerkin approximations, identifying
+    parameter regimes and truncation choices that amplify or suppress such
+    pathologies.
+\end{itemize}
+
+\section{Expected contributions}
+
+The thesis will provide:
+\begin{itemize}
+    \item A mathematically rigorous fast--slow analysis of a prototypical SBL
+    closure with regularization.
+    \item A classification of critical manifold branches, folds, and hysteresis
+    mechanisms relevant to turbulence collapse and recovery.
+    \item A diagnostic framework for detecting and mitigating spurious
+    finite-time blowup in low-order Galerkin and single-column boundary-layer
+    models.
+\end{itemize}
+
+\end{document}
