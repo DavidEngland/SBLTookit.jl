@@ -288,7 +288,7 @@ julia = "~1.10"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+project_hash = "d10f589afb64d2192d616b686a8482cc2a2a0f3b"
 """
 
 # ╔═╡ Cell order:
