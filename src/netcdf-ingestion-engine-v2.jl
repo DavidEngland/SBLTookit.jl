@@ -57,7 +57,7 @@ Returns `-Inf` if every element is NaN or the array is empty.
 function nanmax_abs(arr::AbstractArray)
     val = -Inf
     for x in arr
-        if !isnan(x) && !ismissing(x)
+        if !ismissing(x) && !isnan(x)
             val = max(val, abs(x))
         end
     end
@@ -71,7 +71,7 @@ Physical heuristic: average temperatures under 100 are almost certainly Celsius.
 Preventing dry-adiabatic conversions from operating on K-scale variables.
 """
 function looks_like_celsius(vals::AbstractArray)
-    valid_vals = filter(x -> !isnan(x) && !ismissing(x), vals)
+    valid_vals = filter(x -> !ismissing(x) && !isnan(x), vals)
     if isempty(valid_vals)
         return false
     end
@@ -242,13 +242,13 @@ function try_extract_tower_2d(ds; z0 = 4.5e-4)
     for t in 1:N_t
         for z_idx in 1:N_z
             if isnan(u_mat[z_idx, t]) && !isnan(ws_mat[z_idx, t]) && !isnan(wd_mat[z_idx, t])
-                angle_rad = wd_mat[z_idx, t] * pi / 180.0
+                angle_rad = deg2rad(wd_mat[z_idx, t])
                 u_mat[z_idx, t] = -ws_mat[z_idx, t] * sin(angle_rad)
                 v_mat[z_idx, t] = -ws_mat[z_idx, t] * cos(angle_rad)
             end
         end
     end
-    
+
     # Thermodynamic potential temperature check
     for z_idx in 1:N_z
         slice = view(theta_mat, z_idx, :)
@@ -261,8 +261,22 @@ function try_extract_tower_2d(ds; z0 = 4.5e-4)
             end
         end
     end
-    
+
     return z_coords, u_mat, v_mat, theta_mat, wth_mat, uw_mat
+end
+
+"""
+    looks_like_julian_day(vals)
+
+Helper to identify Julian Day timestamps (typically ranging between 1.0 and 366.0).
+"""
+function looks_like_julian_day(vals::AbstractArray)
+    valid = filter(x -> !ismissing(x) && !isnan(x), vals)
+    if isempty(valid)
+        return false
+    end
+    m = mean(valid)
+    return m >= 1.0 && m <= 366.0
 end
 
 # ------------------------------------------------------------------------------
@@ -282,7 +296,6 @@ function ingest_netcdf_gspt(filepath::String; z0 = 4.5e-4)
     
     Dataset(filepath, "r") do ds
         # Track active campaign details
-        # Fix 2: Explicit key check for NetCDF attributes
         campaign_name = haskey(ds.attrib, "title") ? ds.attrib["title"] : basename(filepath)
         
         # 1. Determine Ingestion Mode (Tower vs. Profile Mode)
@@ -300,7 +313,6 @@ function ingest_netcdf_gspt(filepath::String; z0 = 4.5e-4)
                 error("Could not resolve vertical height coordinates (z) or suffix tower levels.")
             end
             z_raw = collect(z_var)
-            # GABLS3-style schemas store levels as (level, time); levels are static so take the first column
             z_coords = scrub_sentinels!(ndims(z_raw) == 2 ? z_raw[:, 1] : z_raw)
             N_z = length(z_coords)
             
@@ -346,11 +358,10 @@ function ingest_netcdf_gspt(filepath::String; z0 = 4.5e-4)
         if eltype(time_values) <: Dates.AbstractTime
             timestamps = Float64[Dates.datetime2unix(Dates.DateTime(t)) for t in time_values]
         else
-            # Float representation (Julian Days or Hours)
             raw_times = Float64.(time_values)
-            if looks_like_celsius(raw_times) # JD are usually 100-365 range
-                # Vectorized Julian Date to Unix epoch seconds
-                base_unix = Dates.datetime2unix(Dates.DateTime(1997, 10, 29, 0, 0, 0)) # SHEBA benchmark
+            if looks_like_julian_day(raw_times)
+                # Vectorized Julian Date to Unix epoch seconds (SHEBA baseline offset)
+                base_unix = Dates.datetime2unix(Dates.DateTime(1997, 10, 29, 0, 0, 0))
                 timestamps = base_unix .+ (raw_times .- 1.0) .* 86_400.0
             else
                 timestamps = raw_times
@@ -367,15 +378,11 @@ function ingest_netcdf_gspt(filepath::String; z0 = 4.5e-4)
             wth_t = wth_mat[:, t]
             uw_t = uw_mat[:, t]
             
-            # Reconstruct scalar horizontal speed from components
             U_t = sqrt.(u_t .^ 2 + v_t .^ 2)
             
-            # Compute dynamic in-situ noise floor standard deviations
-            # Leveraging local variance if available, or fall back to sensor floor specs
-            sigma_theta = fill(0.05, N_z) # fine-wire thermocouple resolution (K)
-            sigma_U     = fill(0.02, N_z) # sonic anemometer resolution (m/s)
+            sigma_theta = fill(0.05, N_z)
+            sigma_U     = fill(0.02, N_z)
             
-            # Extract surface fluxes for validation
             hs_sfc = !isnan(wth_t[1]) ? wth_t[1] : NaN
             uw_sfc = !isnan(uw_t[1]) ? uw_t[1] : NaN
             
@@ -402,29 +409,25 @@ end
 """
     ingest_gabls3_netcdf(filepath::String)
 
-Dedicated ingestion routine for GABLS3 single-column model output, which uses a
-simpler (time, height) or (height, time) layout without tower suffix naming.
-Reuses the module's shared sentinel-scrubbing and dimension-standardization helpers
-so fixes to those (multi-sign sentinels, attribute guards) stay in sync.
+Dedicated ingestion routine for GABLS3 single-column model output.
 """
 function ingest_gabls3_netcdf(filepath::String)
     if !isfile(filepath)
         error("Target NetCDF file not found at: $filepath")
     end
 
-    return NCDataset(filepath, "r") do ds
+    return Dataset(filepath, "r") do ds
         z_var = get_nc_var(ds, ["z", "height", "zf", "zt"])
         if isnothing(z_var)
-            error("Could not resolve a vertical height coordinate (z/height/zf/zt) in the dataset.")
+            error("Could not resolve a vertical height coordinate in dataset.")
         end
         z_raw = collect(z_var)
-        # GABLS3 SCM stores levels as (zf, time); levels are static so take the first column
         z_coords = Float64.(scrub_sentinels!(ndims(z_raw) == 2 ? z_raw[:, 1] : z_raw))
         Nz = length(z_coords)
 
         time_var = get_nc_var(ds, ["time", "hour", "time_secs", "jd"])
         if isnothing(time_var)
-            error("Could not locate a valid time coordinate in the NetCDF dataset.")
+            error("Could not locate a valid time coordinate in dataset.")
         end
         Nt = length(time_var)
 
@@ -432,15 +435,13 @@ function ingest_gabls3_netcdf(filepath::String)
         v_var = get_nc_var(ds, ["v"])
         t_var = get_nc_var(ds, ["ta", "temp", "t"])
         if isnothing(u_var) || isnothing(v_var) || isnothing(t_var)
-            error("Could not resolve required u/v/temperature variables in the dataset.")
+            error("Could not resolve required u/v/temperature variables.")
         end
 
-        # ensure_2d_matrix handles both (Nz,Nt) and (Nt,Nz) layouts plus sentinel scrubbing
         u_raw = ensure_2d_matrix(collect(u_var), Nz, Nt)
         v_raw = ensure_2d_matrix(collect(v_var), Nz, Nt)
         T_raw = ensure_2d_matrix(collect(t_var), Nz, Nt)
 
-        # GABLS3 stores levels top-down; enforce ascending z to match ingest_netcdf_gspt convention
         if !issorted(z_coords)
             p = sortperm(z_coords)
             z_coords = z_coords[p]
@@ -449,17 +450,14 @@ function ingest_gabls3_netcdf(filepath::String)
             T_raw = T_raw[p, :]
         end
 
-        # Temperature unit conversion (Celsius to Kelvin if needed)
         if looks_like_celsius(T_raw)
             T_raw .+= 273.15
         end
 
-        # Compute virtual potential temperature θv and total wind speed U
         theta_mat = zeros(Float64, Nz, Nt)
         U_mat = zeros(Float64, Nz, Nt)
 
         for t in 1:Nt, iz in 1:Nz
-            # Dry-adiabatic lapse rate correction (0.0098 K/m)
             theta_mat[iz, t] = T_raw[iz, t] + 0.0098 * z_coords[iz]
             U_mat[iz, t] = sqrt(u_raw[iz, t]^2 + v_raw[iz, t]^2)
         end

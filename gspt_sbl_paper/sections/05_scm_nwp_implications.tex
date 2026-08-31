@@ -1,0 +1,51 @@
+\section{SCM Evaluation and NWP Algorithmic Implications}
+\label{sec:scm_nwp_implications}
+
+Implementing these continuous geometric and dynamical formulations within operational single-column model (SCM) and numerical weather prediction (NWP) architectures provides three critical algorithmic fixes to prevent numerical artifacts and solver instabilities near stable boundary layer (SBL) transitions.
+
+\subsection{Operational Curvature Residual Partitioning}
+
+To prevent SCM developers from committing compensating errors by tuning empirical Monin--Obukhov stability functions ($\phi_m, \phi_h$) to resolve physical-space profile misfits, we establish an additive, testable curvature error partition on the observational grid:
+\begin{equation}
+    \Delta_{\text{SCM}}(z) \equiv Ri_{zz}^{\text{model}}(z) - Ri_{zz}^{\text{obs}}(z) = \Delta_{\text{closure}}(z) + \Delta_{\text{geom}}(z) + \tau_{\Delta z}(z), \label{eq:error_partition_budget}
+\end{equation}
+where each isolated residual component is defined operationally relative to a reference coordinate mapping \cite{sheba2002}:
+\begin{enumerate}
+    \item \textbf{Constitutive Closure Failure ($\Delta_{\text{closure}}$):} Projects the model's similarity relation, $R^{\text{model}}(\zeta)$, onto the observed coordinate mapping, isolating local stability parameterization errors under identical physical forcing:
+    \begin{equation}
+        \Delta_{\text{closure}}(z) \equiv \left( R_{\zeta\zeta}^{\text{model}}\left(\zeta^{\text{obs}}\right) \left[ \zeta_z^{\text{obs}} \right]^2 + R_\zeta^{\text{model}}\left(\zeta^{\text{obs}}\right) \zeta_{zz}^{\text{obs}} \right) - Ri_{zz}^{\text{obs}}(z). \label{eq:delta_closure_def}
+    \end{equation}
+    \item \textbf{Flux-Coordinate Geometric Distortion ($\Delta_{\text{geom}}$):} Projects the observed similarity closure, $R^{\text{obs}}(\zeta)$, onto the model's simulated coordinate mapping, isolating vertical transport and flux-divergence curvature errors:
+    \begin{equation}
+        \Delta_{\text{geom}}(z) \equiv \left( R_{\zeta\zeta}^{\text{obs}}\left(\zeta^{\text{model}}\right) \left[ \zeta_z^{\text{model}} \right]^2 + R_\zeta^{\text{obs}}\left(\zeta^{\text{model}}\right) \zeta_{zz}^{\text{model}} \right) - \left( C_{\text{constitutive}}^{\text{obs}} + C_{\text{mapping}}^{\text{obs}} \right). \label{eq:delta_geom_def}
+    \end{equation}
+    \item \textbf{Discretization and Grid-Scale Truncation Artifact ($\tau_{\Delta z}$):} Reconstructs the vertical truncation error introduced by the model's coarse vertical grid layout using the fourth spatial derivative of regularized primitive splines:
+    \begin{equation}
+        \tau_{\Delta z}(z) \approx \frac{(\Delta z)^2}{12} \frac{\partial^4 Ri_g}{\partial z^4}. \label{eq:discretization_artifact_def}
+    \end{equation}
+\end{enumerate}
+
+SCM developers can utilize these partitioned residuals to systematically isolate the true source of profile errors: if $|\Delta_{\text{geom}}| \gg 0$, developers must retune vertical mixing lengths ($l_m$) or flux transport closures while leaving the empirical similarity functions ($\phi_m, \phi_h$) unaltered \cite{nieuwstadt1984}.
+
+\subsection{SCM Calibration Gradient Masking}
+
+To prevent parameter drift during automated SCM optimization (e.g., in variational data assimilation or machine learning parameter estimation), the diagnostic ratio $\mathcal{C}_{\text{coord}}(z)$ is converted into a dynamic weighting function $w(z)$ for the loss gradient with respect to the similarity parameters $\boldsymbol{\theta}$ in the stability function $R(\zeta; \boldsymbol{\theta})$:
+\begin{equation}
+    w(z) = 1 - \tanh\left( \gamma \cdot \max\left(0, \; \mathcal{C}_{\text{coord}}(z) - \mathcal{C}_{\text{thresh}}\right) \right). \label{eq:loss_gradient_mask}
+\end{equation}
+
+By setting $\mathcal{C}_{\text{thresh}} \approx 0.65$ and scaling parameter $\gamma > 0$, the weighting function dynamically zeroes out parameter updates in vertical layers where physical profile curvature is coordinate-induced. This locks the calibration loop strictly onto true constant-flux or low-$\zeta_{zz}$ regions, preventing the optimizer from corrupting local stability physics to compensate for unresolved flux-profile geometry.
+
+\subsection{Asymptotic Regularity Constraints on Turbulence Closures}
+
+Near the SBL height or during severe decoupling transitions, turbulent fluxes of momentum and heat vanish asymptotically as they approach the collapse height $z \to z_c^-$ \cite{nieuwstadt1984}. Parameterizing these vertical decay profiles as:
+\begin{equation}
+    \tau(z) \sim \tau_0 \left(1 - \frac{z}{z_c}\right)^a \qquad \text{and} \qquad H(z) \sim H_0 \left(1 - \frac{z}{z_c}\right)^b, \label{eq:asymptotic_flux_decay}
+\end{equation}
+Lemma~\ref{lem:boundary_regularity} establishes that the local inverse Obukhov length scales as $\chi(z) \sim C(z_c-z)^p$, with exponent $p = b - \frac{3}{2}a$. Standard 1.5-order closures commonly assume linear decay envelopes ($a=1, b=1$), yielding a negative exponent $p = -0.5$. This linear decay violates the $C^2$ boundary regularity threshold, introducing a formal coordinate singularity ($\chi'' \to \infty$) that manufactures unbounded diagnostic gradients and spurious coordinate-induced knees at the SBL top.
+
+To guarantee continuous coordinate regularity and eliminate these numerical artifacts, sub-grid turbulence schemes must satisfy:
+\begin{equation}
+    p = b - \frac{3}{2}a \ge 2. \label{eq:exponent_threshold}
+\end{equation}
+Setting the decay exponents to $a = 2$ and $b = 5$ yields $p = 5 - \frac{3}{2}(2) = 2$, satisfying the $C^2$ regularity threshold and ensuring that coordinate derivatives $\zeta_z$ and $\zeta_{zz}$ remain bounded and smooth as they transition into the free atmosphere.

@@ -1,0 +1,56 @@
+This is BibTeX, Version 0.99e (TeX Live 2026)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: plain.bst
+Database file #1: bib/references.bib
+Warning--I didn't find a database entry for "gabls3_2013"
+Warning--I didn't find a database entry for "sheba2002"
+Warning--I didn't find a database entry for "cases99"
+Warning--I didn't find a database entry for "grachev2007"
+Warning--I didn't find a database entry for "businger1971"
+Warning--I didn't find a database entry for "STABILITY"
+Warning--I didn't find a database entry for "BelowFastSlow"
+Warning--I didn't find a database entry for "CleanRestatement"
+Warning--I didn't find a database entry for "CoreMathRevisions"
+You've used 3 entries,
+            2118 wiz_defined-function locations,
+            532 strings with 4621 characters,
+and the built_in function-call counts, 1042 in all, are:
+= -- 105
+> -- 42
+< -- 0
++ -- 18
+- -- 14
+* -- 85
+:= -- 180
+add.period$ -- 9
+call.type$ -- 3
+change.case$ -- 16
+chr.to.int$ -- 0
+cite$ -- 3
+duplicate$ -- 33
+empty$ -- 82
+format.name$ -- 14
+if$ -- 206
+int.to.chr$ -- 0
+int.to.str$ -- 3
+missing$ -- 3
+newline$ -- 18
+num.names$ -- 6
+pop$ -- 10
+preamble$ -- 1
+purify$ -- 13
+quote$ -- 0
+skip$ -- 21
+stack$ -- 0
+substring$ -- 91
+swap$ -- 3
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 12
+warning$ -- 0
+while$ -- 12
+width$ -- 4
+write$ -- 35
+(There were 9 warnings)

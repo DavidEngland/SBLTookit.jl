@@ -1,0 +1,83 @@
+\section{GSPT Coordinate Curvature and Nieuwstadt Local Scaling}
+\label{sec:coordinate_curvature}
+
+Evaluating vertical profiles of atmospheric stability beyond the shallow surface layer requires abandoning the constant-flux assumption of classical Monin--Obukhov Similarity Theory \cite{sheba2002}. In the outer stable boundary layer (SBL), vertical turbulent transport decays continuously, causing momentum and heat fluxes to vary with height \cite{nieuwstadt1984, sheba2002}. To account for this vertical structure, we invoke Nieuwstadt's local scaling hypothesis \cite{nieuwstadt1984}. Under local scaling, the Obukhov length is generalized to a height-dependent scale $L(z)$ \cite{nieuwstadt1984}:
+\begin{equation}
+    L(z) \equiv \frac{-\tau(z)^{3/2}}{\kappa \dfrac{g}{\theta_0} H(z)}, \label{eq:local_obukhov_length}
+\end{equation}
+where $\tau(z) > 0$ represents local vertical kinematic momentum flux (shear stress), $H(z) \equiv \overline{w'\theta_v'}(z) < 0$ represents local kinematic virtual potential temperature flux, $\kappa \approx 0.40$ is the von K\'arm\'an constant, and $g/\theta_0$ is the buoyancy parameter \cite{businger1971}.
+
+To avoid numerical singularities near neutral conditions ($H \to 0, L \to -\infty$), we define the \textit{inverse Obukhov length profile} $\chi(z) \equiv 1/L(z)$ \cite{nieuwstadt1984}:
+\begin{equation}
+    \chi(z) = \frac{-\kappa \dfrac{g}{\theta_0} H(z)}{\tau(z)^{3/2}} > 0. \label{eq:inverse_obukhov_def}
+\end{equation}
+The local dimensionless similarity coordinate $\zeta(z)$ is mapped directly as:
+\begin{equation}
+    \zeta(z) \equiv \frac{z}{L(z)} = z \chi(z). \label{eq:inverse_similarity_coord}
+\end{equation}
+
+Assuming active turbulence ($\tau > 0$) and a twice-differentiable inverse profile ($\chi \in C^2$), the first two vertical spatial derivatives of the coordinate mapping with respect to physical height $z$ are:
+\begin{equation}
+    \zeta_z(z) = \chi(z) + z \chi'(z), \label{eq:zeta_z_analytic}
+\end{equation}
+\begin{equation}
+    \zeta_{zz}(z) = 2\chi'(z) + z \chi''(z). \label{eq:zeta_zz_analytic}
+\end{equation}
+
+Expanding the logarithmic derivative of \eqref{eq:inverse_obukhov_def} yields $\frac{\chi'(z)}{\chi(z)} = \frac{H'(z)}{H(z)} - \frac{3}{2}\frac{\tau'(z)}{\tau(z)}$. Substituting this into \eqref{eq:zeta_z_analytic} expresses the coordinate Jacobian $\zeta_z(z)$ directly in terms of relative vertical flux gradients:
+\begin{equation}
+    \zeta_z(z) = \chi(z) \left[ 1 + z \left( \frac{H'(z)}{H(z)} - \frac{3}{2}\frac{\tau'(z)}{\tau(z)} \right) \right]. \label{eq:zeta_z_expanded}
+\end{equation}
+
+\subsection{Kinematic Folds and Structural Exclusion}
+
+A \textit{coordinate fold point} $z_* \in (0, z_{\text{top}})$ represents a physical height where the coordinate Jacobian vanishes ($\zeta_z(z_*) = 0$) \cite{fenichel1979}. The fold is nondegenerate if the coordinate curvature is non-zero ($\zeta_{zz}(z_*) \neq 0$). Under Nieuwstadt local scaling, coordinate folds are physically excluded from constant-flux layers:
+
+\begin{proposition}[Structural Exclusion of Folds]
+Let $J \subset (0, z_{\text{top}})$ be a physical vertical subinterval on which turbulent fluxes are spatially uniform ($\tau'(z) = 0, H'(z) = 0$), such that the inverse Obukhov profile is constant ($\chi(z) \equiv \chi_0 > 0$). Then, the coordinate Jacobian satisfies $\zeta_z(z) = \chi_0 \neq 0$ for all $z \in J$; hence, $J$ contains no coordinate fold points.
+\end{proposition}
+
+\begin{proof}
+On the subinterval $J$, vertical flux gradients vanish identically, forcing $\chi'(z) \equiv 0$. Substituting this into \eqref{eq:zeta_z_analytic} yields $\zeta_z(z) = \chi(z) + z(0) = \chi_0$. Because $\chi_0 > 0$, the Jacobian never vanishes on $J$, preventing coordinate fold formation.
+\end{proof}
+
+Proposition 1 proves that an observed coordinate fold is a kinematic signature of active vertical flux divergence. Setting $\zeta_z(z_*) = 0$ in \eqref{eq:zeta_z_expanded} yields the generic fold locus condition:
+\begin{equation}
+    1 + z_* \left( \frac{H'(z_*)}{H(z_*)} - \frac{3}{2}\frac{\tau'(z_*)}{\tau(z_*)} \right) = 0. \label{eq:fold_kinematics_condition}
+\end{equation}
+Equation \eqref{eq:fold_kinematics_condition} demonstrates that coordinate folds are governed by the \textbf{relative differential divergence} between kinetic energy transport ($\tau$) and thermal structure ($H$), rather than absolute heat-flux divergence alone.
+
+\subsection{The GSPT Curvature Decomposition}
+
+Let $Ri_g(z) = R(\zeta(z))$ represent the gradient Richardson number, where $R(\cdot)$ is a smooth similarity closure in similarity space. Differentiating the Richardson profile twice with respect to physical height $z$ yields the GSPT curvature decomposition:
+\begin{equation}
+    Ri_{g,z} = R'(\zeta) \zeta_z, \label{eq:Ri_z_chain}
+\end{equation}
+\begin{equation}
+    Ri_{g,zz} = \underbrace{R''(\zeta) \zeta_z^2}_{\mathcal{C}_{\text{constitutive}}} + \underbrace{R'(\zeta) \zeta_{zz}}_{\mathcal{C}_{\text{mapping}}}. \label{eq:Ri_zz_decomposition}
+\end{equation}
+
+Equation \eqref{eq:Ri_zz_decomposition} partitions the total physical profile curvature into two additive, mathematically distinct geometric components:
+\begin{enumerate}
+    \item \textbf{Constitutive Curvature ($\mathcal{C}_{\text{constitutive}}$):} The intrinsic curvature of the empirical stability function mapped into physical space, scaling quadratically with the coordinate Jacobian ($\zeta_z^2$).
+    \item \textbf{Mapping Curvature ($\mathcal{C}_{\text{mapping}}$):} The coordinate-induced curvature generated by the non-linear transformation $z \mapsto \zeta(z)$ under active vertical flux divergence ($\zeta_{zz} \neq 0$).
+\end{enumerate}
+
+\begin{theorem}[Curvature Signature of a Nondegenerate Fold]
+Let $z_*$ represent a nondegenerate coordinate fold point ($\zeta_z(z_*) = 0$ and $\zeta_{zz}(z_*) \neq 0$) under stable stratification, and assume $R'(\zeta_*) \neq 0$. Then, the physical gradient Richardson profile exhibits a stationary point with non-zero vertical curvature governed entirely by mapping coordinate geometry:
+\begin{equation}
+    Ri_{g,z}(z_*) = 0 \qquad \text{and} \qquad Ri_{g,zz}(z_*) = R'(\zeta_*) \zeta_{zz}(z_*) \neq 0. \label{eq:fold_curvature_theorem}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Evaluating \eqref{eq:Ri_z_chain} at $z_*$ where $\zeta_z(z_*) = 0$ yields $Ri_{g,z}(z_*) = R'(\zeta_*)(0) = 0$. Evaluating \eqref{eq:Ri_zz_decomposition} at the fold yields $Ri_{g,zz}(z_*) = R''(\zeta_*)(0)^2 + R'(\zeta_*) \zeta_{zz}(z_*) = R'(\zeta_*) \zeta_{zz}(z_*)$. Because $R'(\zeta_*) \neq 0$ and nondegeneracy guarantees $\zeta_{zz}(z_*) \neq 0$, the physical vertical curvature at the fold is strictly non-zero.
+\end{proof}
+
+To quantify whether an observed vertical spatial "knee" ($|Ri_{g,zz}| \gg 0$) stems from empirical closure failure or coordinate mapping curvature, we define the non-dimensional \textbf{coordinate-induced curvature ratio} $\mathcal{C}_{\text{coord}}(z)$:
+\begin{equation}
+    \mathcal{C}_{\text{coord}}(z) \equiv \frac{\left| R'(\zeta) \zeta_{zz} \right|}{\left| R''(\zeta) \zeta_z^2 \right| + \left| R'(\zeta) \zeta_{zz} \right| + \varepsilon_C}, \label{eq:curvature_ratio_def}
+\end{equation}
+where $\varepsilon_C = 10^{-10}$ is a positive regularization constant.
+
+A value of $\mathcal{C}_{\text{coord}} \to 1$ certifies that an apparent physical profile knee is a **"Fold Illusion"** driven by non-linear coordinate mapping, whereas $\mathcal{C}_{\text{coord}} \to 0$ indicates genuine structural curvature in the similarity closure $R(\zeta)$.
