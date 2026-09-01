@@ -13,6 +13,7 @@ end
 include("test_triple_point_qc.jl")
 include("test_scm_convergence.jl")
 include("test_netcdf_ingestion.jl")
+include("test_curvature_diagnostics.jl")
 
 using SBLToolkit
 
