@@ -149,4 +149,21 @@ using .CurvatureDiagnostics
         )
     end
 
+    @testset "7. CASES-99 CSV Connection" begin
+        csv_path = joinpath(@__DIR__, "..", "workspace", "out", "gspt_cases99_coordinates.csv")
+        out = process_curvature_csv(csv_path)
+
+        @test length(out.timestamps) == 25
+        @test length(out.z) == 150
+        @test size(out.chi) == (150, 25)
+        @test size(out.classification) == (150, 25)
+        @test out.timestamps[[1, end]] == [0.0, 12.0]
+        @test out.z[[1, end]] == [1.0, 60.0]
+        @test all(isfinite, out.chi)
+        @test all(isfinite, out.zeta_z)
+        @test all(isfinite, out.zeta_zz)
+        @test out.C_M[2, 1] ≈ 0.551316
+        @test all(s -> s in valid_symbols, out.classification)
+    end
+
 end

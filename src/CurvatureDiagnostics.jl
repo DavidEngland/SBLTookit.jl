@@ -1,10 +1,11 @@
 module CurvatureDiagnostics
 
 using SmoothingSplines
+using CSV
 using LinearAlgebra
 using Statistics
 
-export process_dns_profile, CurvatureOutput
+export process_dns_profile, process_curvature_csv, CurvatureOutput, CurvatureDatasetOutput
 
 struct CurvatureOutput
     z::Vector{Float64}
@@ -15,6 +16,17 @@ struct CurvatureOutput
     zeta_zz::Vector{Float64}
     C_M::Vector{Float64}
     classification::Vector{Symbol}
+end
+
+struct CurvatureDatasetOutput
+    timestamps::Vector{Float64}
+    z::Vector{Float64}
+    chi::Matrix{Float64}
+    zeta::Matrix{Float64}
+    zeta_z::Matrix{Float64}
+    zeta_zz::Matrix{Float64}
+    C_M::Matrix{Float64}
+    classification::Matrix{Symbol}
 end
 
 function spline_derivative(spline::SmoothingSpline{Float64}, x::Vector{Float64}, order::Int)
@@ -191,6 +203,130 @@ function process_dns_profile(
     end
 
     return CurvatureOutput(z, Rig, chi, zeta, zeta_z, zeta_zz, C_M, classification)
+end
+
+"""
+    process_curvature_csv(filepath; kwargs...)
+
+Process a flat curvature-diagnostic CSV. The generated CASES-99 artifact stores
+`Ri_g` rather than primitive fields, so it is used as the inverse-coordinate
+proxy `chi` while the supplied `C_M` is retained for classification.
+"""
+function process_curvature_csv(
+    filepath::AbstractString;
+    timestamp_column::Symbol = :timestamp,
+    height_column::Symbol = :height,
+    chi_column::Symbol = :Ri_g,
+    mapping_fraction_column::Symbol = :C_M,
+    state_singularity_column::Union{Nothing,Symbol} = nothing,
+    verified_saddle_node_column::Union{Nothing,Symbol} = nothing,
+    closure_residual_column::Union{Nothing,Symbol} = nothing,
+    delta_fold::Float64 = 0.10,
+    C_M_min::Float64 = 0.70,
+    delta_obs::Float64 = Inf,
+    state_singularity_tol::Float64 = 1e-8,
+    curvature_smoothing_parameter::Float64 = 1.0,
+)
+    rows = collect(CSV.File(filepath))
+    isempty(rows) && throw(ArgumentError("Curvature CSV contains no data rows."))
+    required_columns = (timestamp_column, height_column, chi_column, mapping_fraction_column)
+    all(column -> hasproperty(rows[1], column), required_columns) ||
+        throw(ArgumentError("Curvature CSV is missing one or more required columns."))
+
+    timestamps = sort(unique(Float64(getproperty(row, timestamp_column)) for row in rows))
+    first_time_rows = filter(row -> Float64(getproperty(row, timestamp_column)) == timestamps[1], rows)
+    z = Float64[getproperty(row, height_column) for row in first_time_rows]
+    issorted(z) || throw(ArgumentError("Curvature CSV heights must be sorted within each timestamp."))
+    Nz = length(z)
+    Nt = length(timestamps)
+
+    chi_matrix = zeros(Nz, Nt)
+    zeta_matrix = zeros(Nz, Nt)
+    zeta_z_matrix = zeros(Nz, Nt)
+    zeta_zz_matrix = zeros(Nz, Nt)
+    C_M_matrix = zeros(Nz, Nt)
+    classification_matrix = Matrix{Symbol}(undef, Nz, Nt)
+
+    for (time_index, timestamp) in pairs(timestamps)
+        time_rows = filter(row -> Float64(getproperty(row, timestamp_column)) == timestamp, rows)
+        length(time_rows) == Nz || throw(ArgumentError("Each timestamp must contain the same number of heights."))
+        heights = Float64[getproperty(row, height_column) for row in time_rows]
+        heights == z || throw(ArgumentError("Heights must match across timestamps."))
+
+        chi = Float64[getproperty(row, chi_column) for row in time_rows]
+        C_M = Float64[getproperty(row, mapping_fraction_column) for row in time_rows]
+        all(isfinite, chi) && all(isfinite, C_M) ||
+            throw(ArgumentError("Curvature CSV diagnostic values must be finite."))
+        all((0.0 .<= C_M) .& (C_M .<= 1.0)) ||
+            throw(ArgumentError("Mapping fractions must lie in [0, 1]."))
+
+        spl_chi = fit(SmoothingSpline, z, chi, curvature_smoothing_parameter)
+        chi_z = spline_derivative(spl_chi, z, 1)
+        chi_zz = spline_derivative(spl_chi, z, 2)
+        zeta = z .* chi
+        zeta_z = chi .+ z .* chi_z
+        zeta_zz = 2.0 .* chi_z .+ z .* chi_zz
+
+        state_singularity = state_singularity_column === nothing ? fill(Inf, Nz) :
+            Float64[getproperty(row, state_singularity_column) for row in time_rows]
+        verified = verified_saddle_node_column === nothing ? falses(Nz) :
+            Bool[getproperty(row, verified_saddle_node_column) for row in time_rows]
+        closure_residual = closure_residual_column === nothing ? fill(0.0, Nz) :
+            abs.(Float64[getproperty(row, closure_residual_column) for row in time_rows])
+
+        classifications = classify_profile(
+            z, zeta_z, zeta_zz, C_M;
+            delta_fold, C_M_min, state_singularity, verified, closure_residual,
+            delta_obs, state_singularity_tol,
+        )
+        chi_matrix[:, time_index] = chi
+        zeta_matrix[:, time_index] = zeta
+        zeta_z_matrix[:, time_index] = zeta_z
+        zeta_zz_matrix[:, time_index] = zeta_zz
+        C_M_matrix[:, time_index] = C_M
+        classification_matrix[:, time_index] = classifications
+    end
+
+    return CurvatureDatasetOutput(
+        timestamps, z, chi_matrix, zeta_matrix, zeta_z_matrix,
+        zeta_zz_matrix, C_M_matrix, classification_matrix,
+    )
+end
+
+function classify_profile(
+    z::Vector{Float64},
+    zeta_z::Vector{Float64},
+    zeta_zz::Vector{Float64},
+    C_M::Vector{Float64};
+    delta_fold::Float64,
+    C_M_min::Float64,
+    state_singularity::Vector{Float64},
+    verified::AbstractVector{Bool},
+    closure_residual::Vector{Float64},
+    delta_obs::Float64,
+    state_singularity_tol::Float64,
+)
+    L_z = z[end] - z[1]
+    classification = Vector{Symbol}(undef, length(z))
+    for i in eachindex(z)
+        fold_scale = L_z * abs(zeta_zz[i])
+        is_fold_prox = fold_scale > 0.0 && abs(zeta_z[i]) <= delta_fold * fold_scale
+        is_singular = state_singularity[i] <= state_singularity_tol
+        is_closure_valid = closure_residual[i] <= delta_obs
+
+        if !is_closure_valid
+            classification[i] = :ClosureBreakdown
+        elseif verified[i] && is_fold_prox
+            classification[i] = :HybridFold
+        elseif verified[i]
+            classification[i] = :VerifiedSaddleNode
+        elseif is_fold_prox && C_M[i] >= C_M_min && !is_singular
+            classification[i] = :PureCoordinateFold
+        else
+            classification[i] = :DynamicSingularityCandidate
+        end
+    end
+    return classification
 end
 
 end # module
