@@ -35,7 +35,7 @@ function build_operators(z::Vector{Float64})
     for i in 1:n
         if i == 1
             # Lower boundary: Asymmetric one-sided 3-point stencil
-            idx =
+            idx = [1, 2, 3]
         elseif i == n
             # Upper boundary: Asymmetric one-sided 3-point stencil
             idx = [n-2, n-1, n]
