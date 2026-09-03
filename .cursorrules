@@ -1,0 +1,93 @@
+# SBLToolkit.jl Cursor Rules & Development Standards
+
+## Julia Coding Standards
+
+1. **Type Stability:**
+   * All structs must be immutable and parametric: `struct GSPTModel{T<:AbstractFloat}`.
+   * Avoid `Any`, untyped containers, or concrete floats in struct definitions (`Float64` hardcoding inside generic functions is prohibited).
+2. **Zero-Allocation Inner Loops:**
+   * In-place operations (`mul!`, `ldiv!`, `vector .= ...`) and `@inbounds` indexing inside grid sweeps.
+   * Pre-allocate diagnostic buffers outside time/space iteration loops.
+3. **API & Interface Design:**
+   * Separate model construction from execution: `model = GSPTModel(...)` then `res = evaluate_gspt_profile(...)`.
+   * Export only stable top-level APIs; keep internal helper routines non-exported.
+4. **Error Handling & Guardrails:**
+   * Throw explicit, informative exceptions (e.g., `ArgumentError("Stencil collapse: N_z < 3 levels provided.")`).
+   * Enforce shear floor regularization ($S_{\text{eff}} = \sqrt{S^2 + \eta^2}$) to prevent division-by-zero near Low-Level Jet (LLJ) noses.
+
+---
+
+## Documentation & Mathematical Formatting
+
+Every exported type and function must include a complete Julia docstring with:
+
+1. **Symbol Definitions:** Physical meaning, notation, and standard units (e.g., $\text{m s}^{-1}$, $\text{K}$).
+2. **Physical Interpretation:** Clear explanation of what the output means physically.
+3. **Example Usage:** Executable Doctest snippet.
+
+### Mathematical Notation Conventions
+
+* Vectors: `\mathbf{x}` or italic state components $(u, v, \theta_v)$.
+* Matrices / Jacobians: Uppercase bold `\mathbf{J}` or `J`.
+* Exact Fast Eigenvalue: $\lambda_f = \frac{\partial f}{\partial e}$.
+* Physical Fast Relaxation Rate: $\lambda_{\text{fast,phys}} = \lambda_f / \epsilon$.
+
+---
+
+## Dual-Format Output Standards (Markdown + LaTeX)
+
+Whenever requested to generate tables, figures, or reports:
+
+### 1. Dual Tables
+
+* **Markdown:** GitHub-Flavored Markdown (GFM) with explicit column alignment (`| :--- | :---: | ---: |`).
+* **LaTeX:** Wrapped in `\begin{table}[htbp] \centering ... \end{table}` using `booktabs` (`\toprule`, `\midrule`, `\bottomrule`). **NEVER** use vertical lines (`|`) in LaTeX tables.
+
+### 2. Dual Figures
+
+* **Markdown / Web:** Embedded Mermaid.js diagram (` ```mermaid ... ``` `).
+* **LaTeX / Publication:** Standalone TikZ code wrapped in `\begin{figure}[htbp] \centering ... \end{figure}`.
+* Keep Mermaid and TikZ diagrams semantically identical.
+
+---
+
+## Testing & Verification Standards
+
+Every module implementation MUST be accompanied by a test set in `test/`:
+
+1. **Happy Path:** Standard physical sounding profiles with known analytical coordinate fold solutions.
+2. **Edge Cases:**
+   * Low-Level Jet nose with vanishing shear ($S \to 0$).
+   * Strongly stratified inversion layers ($N^2 \gg 0$).
+3. **Invalid Inputs:**
+   * $N_z < 3$ levels (must trigger stencil collapse error).
+   * Non-positive mixing length ($l_0 \le 0$) or invalid $\epsilon \notin (0, 1)$.
+4. **Deterministic Behavior:** Ensure exact numerical reproducibility across repeated runs.
+
+---
+
+## Interactive Cursor Prompt Templates
+
+### Prompt: Generating an SBLToolkit Module
+
+```text
+Requirements:
+1. Provide type-stable Julia code with immutable parametric structs.
+2. Include full docstrings with LaTeX formulas, physical units, and symbol definitions.
+3. Ensure zero allocations inside primary profile evaluation loops.
+4. Write a corresponding @testset test suite including valid, edge, and invalid input checks.
+
+```
+
+### Prompt: Generating Publication Artifacts
+
+```text
+Generate dual-format (Markdown + LaTeX) outputs for the following SBLToolkit diagnostic results.
+
+Data / Diagnostic Output:
+[Insert raw diagnostic output or summary metrics]
+
+Requirements:
+1. Markdown Table: Clean GFM formatting with explicit alignment.
+2. LaTeX Table: Floating table with booktabs syntax (no vertical rules).
+3. Diagram: Provide matching Mermaid.js and TikZ schematics for the diagnostic flow.
