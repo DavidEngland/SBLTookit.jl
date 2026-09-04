@@ -59,6 +59,8 @@ using SBLToolkit
         @test lambda_1 == -0.412
         @test lambda_2 == -0.01
         @test_throws ArgumentError extract_fast_eigenvalue([0.0 -1.0; 1.0 0.0], state)
+        @test extract_fast_eigenvalue([0.0 -1.0; 1.0 0.0], state; complex_policy=:real_part) == 0.0
+        @test isnothing(state.prev_v_f)
     end
 
     @testset "GABLS3 Jacobian adapter and fold audit" begin

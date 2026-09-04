@@ -49,7 +49,7 @@ export SBLGating, BifurcationGatingParams, GatingState,
 export GABLS3Adapters, GSPTModelConfig, map_gabls3_to_jacobian,
     compute_fold_ratio
 export GABLS3Stepper, SCMState, SCMConfig, SCMDiagnostics, solve_tridiagonal!,
-    step_scm!, initialize_cabauw_state
+    step_scm!, initialize_cabauw_state, net_radiation, surface_sensible_heat_flux
 
 # -------------------------------------------------------------------
 # Include and expose submodules from src/ultra

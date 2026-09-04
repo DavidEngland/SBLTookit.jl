@@ -79,17 +79,34 @@ function _normalized_real_eigensystem(J::AbstractMatrix{T}) where {T<:AbstractFl
 end
 
 """
-    extract_fast_eigenvalue(J, state)
+    extract_fast_eigenvalue(J, state; complex_policy=:reject)
 
 Returns the real eigenvalue of the tracked fast branch. On the first call, the
 branch with the shortest timescale (largest absolute real eigenvalue) initializes
 the track. Later calls select the eigenvector with the greatest absolute overlap
-with the prior branch, avoiding ordering changes at crossings.
+with the prior branch, avoiding ordering changes at crossings. Complex spectra
+have no unique real fast eigenvector: `:reject` throws, while `:real_part`
+returns the complex branch decay rate and clears vector continuation.
 """
 function extract_fast_eigenvalue(
     J::AbstractMatrix{T},
     state::GatingState{T},
+    ; complex_policy::Symbol=:reject,
 ) where {T<:AbstractFloat}
+    complex_policy in (:reject, :real_part) || throw(ArgumentError(
+        "complex_policy must be :reject or :real_part",
+    ))
+    size(J) == (2, 2) || throw(ArgumentError("fast-mode extraction requires a 2x2 Jacobian"))
+    all(isfinite, J) || throw(ArgumentError("Jacobian entries must be finite"))
+    decomposition = eigen(Matrix(J))
+    if !all(isreal, decomposition.values)
+        complex_policy === :reject && throw(ArgumentError(
+            "fast-mode extraction requires real eigenvalues; complex spectra need a declared policy",
+        ))
+        real_values = T.(real.(decomposition.values))
+        state.prev_v_f = nothing
+        return real_values[argmax(abs.(real_values))]
+    end
     values, vectors = _normalized_real_eigensystem(J)
     index = if isnothing(state.prev_v_f)
         argmax(abs.(values))
