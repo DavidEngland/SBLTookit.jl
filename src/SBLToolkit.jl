@@ -31,13 +31,25 @@ export discover_campaign_trajectories
 # --
 include("GSPTPhase2.jl")
 include("GSPTTimeLoop.jl")
+include("SBLGating.jl")
+include("GABLS3Adapters.jl")
+include("GABLS3Stepper.jl")
 using .GSPTPhase2
 using .GSPTTimeLoop
+using .SBLGating
+using .GABLS3Adapters
+using .GABLS3Stepper
 
 export GSPTPhase2, ProfileData, CoordinateGeometry, ConstitutiveGeometry,
     ObservationDiagnostic, DiagnosticResult, DomainMetrics,
     compute_gspt, compare_tracks, check_tangential_cone,
     ingest_netcdf_gspt, plot_gspt_transition
+export SBLGating, BifurcationGatingParams, GatingState,
+    extract_fast_eigenvalue, update_gating_state!
+export GABLS3Adapters, GSPTModelConfig, map_gabls3_to_jacobian,
+    compute_fold_ratio
+export GABLS3Stepper, SCMState, SCMConfig, SCMDiagnostics, solve_tridiagonal!,
+    step_scm!, initialize_cabauw_state
 
 # -------------------------------------------------------------------
 # Include and expose submodules from src/ultra

@@ -5,15 +5,15 @@ The reason is important: the proposed gate is only as physically meaningful as t
 For the reduced fast–slow system  
 \dot{x}=F(x,y),\qquad \dot y=\varepsilon G(x,y),  
 construct the Jacobian  
-J= \begin{pmatrix} F_x & F_y\\ \varepsilon G_x & \varepsilon G_y \end{pmatrix}.  
+J=\begin{pmatrix}F_x & F_y\\\varepsilon G_x & \varepsilon G_y\end{pmatrix}.
 For the GSPT-SBL state you have been using, the relevant fast direction should be identified explicitly rather than simply taking maximum(real(eigvals(J))).  
 A robust implementation should return something like  
-\lambda_f = \operatorname{Re}\lambda_{\text{fast}},  
+\lambda_f=\operatorname{Re}\lambda_{\text{fast}},
 where the fast eigenvalue is selected by timescale separation/continuation, not merely by eigenvalue magnitude.  
 That distinction matters near folds and near eigenvalue crossings.  
-   
+
 ⸻  
-   
+
 **2. Separate geometric gating from the mixing floor**  
 I would also change the conceptual structure of your current function.  
 Right now:  
@@ -28,7 +28,7 @@ implicitly says:
 dynamically active **⇒** enforce minimum diffusivity.  
 That’s stronger than the geometric statement you actually want to test.  
 The GSPT hypothesis is closer to:  
-\boxed{ \lambda_f\ge-\epsilon_\lambda \quad\land\quad |\zeta_z|\lesssim\epsilon_\zeta \quad\Longrightarrow\quad \text{do not permit diagnostic shutdown} }  
+\boxed{\lambda_f\ge-\epsilon_\lambda\quad\land\quad|\zeta_z|\lesssim\epsilon_\zeta\quad\Longrightarrow\quad\text{do not permit diagnostic shutdown}}
 So I would make **geometry and dynamics independent gating criteria**.  
 For example:  
 ```
@@ -40,9 +40,9 @@ is_gated = active && geometrically_regular
 ```
 Then the floor becomes an implementation policy applied only when is_gated.  
 This directly tests your central claim that a *spatial coordinate fold* should not be confused with a *loss of normal hyperbolicity*.  
-   
+
 ⸻  
-   
+
 **3. Add hysteresis before putting it into GABLS3**  
 A timestep-local test  
 \lambda_f \ge -\epsilon_\lambda  
@@ -72,9 +72,9 @@ epsilon_off = -1e-4
 
 ```
 but **not regard those numbers as physically calibrated yet**. They should ultimately be tied to the SCM timestep and the scaling of the reduced Jacobian.  
-   
+
 ⸻  
-   
+
 ## 4. Then integrate with   
 ```
 SBLToolkit.jl

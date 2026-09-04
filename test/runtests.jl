@@ -17,6 +17,9 @@ include("test_curvature_diagnostics.jl")
 
 using SBLToolkit
 
+include("test_sbl_gating.jl")
+include("test_gabls3_stepper.jl")
+
 @testset "SBLToolkit.jl Automated Integration Test Suite" begin
 
     @testset "Core Stability & Forcing Modules" begin
