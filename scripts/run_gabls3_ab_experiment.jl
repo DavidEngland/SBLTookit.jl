@@ -5,7 +5,7 @@ using SBLToolkit
 const HOURS = 24
 const SECONDS_PER_HOUR = 3600
 
-function run_experiment(; enable_gating::Bool)
+function run_experiment(closure_mode::Symbol)
     z = collect(5.0:5.0:200.0)
     state = initialize_cabauw_state(z)
     config = SCMConfig(z; dt=60.0, surface_mode=:slab, radiation_max=400.0,
@@ -18,7 +18,8 @@ function run_experiment(; enable_gating::Bool)
     diagnostics = SCMDiagnostics{Float64}[]
 
     for _ in 1:(HOURS * SECONDS_PER_HOUR ÷ round(Int, config.dt))
-        push!(diagnostics, step_scm!(state, config, gating_params, gs_config; enable_gating))
+        push!(diagnostics, step_scm!(state, config, gating_params, gs_config;
+            closure_mode, enable_gating=closure_mode !== :control))
     end
     return diagnostics
 end
@@ -30,6 +31,7 @@ function summarize(label::String, diagnostics::Vector{SCMDiagnostics{Float64}})
     radiation = getfield.(diagnostics, :net_radiation)
     ground_flux = getfield.(diagnostics, :ground_heat_flux)
     gated_steps = sum(getfield.(diagnostics, :gated_levels))
+    override_steps = sum(count.(getfield.(diagnostics, :override_mask)))
     @printf("%s\n", label)
     @printf("  final T_2m: %.3f K\n", t2m[end])
     @printf("  mean T_2m: %.3f K\n", mean(t2m))
@@ -38,11 +40,15 @@ function summarize(label::String, diagnostics::Vector{SCMDiagnostics{Float64}})
     @printf("  mean R_n: %.2f W m^-2\n", mean(radiation))
     @printf("  mean G_s: %.2f W m^-2\n", mean(ground_flux))
     @printf("  gated level-timesteps: %d\n", gated_steps)
+    @printf("  eligible Ri-shutdown overrides: %d\n", override_steps)
     return t2m[end]
 end
 
-baseline = run_experiment(enable_gating=false)
-gated = run_experiment(enable_gating=true)
-baseline_t2m = summarize("Experiment A: baseline", baseline)
-gated_t2m = summarize("Experiment B: geometry-aware gate", gated)
-@printf("Final T_2m difference (B - A): %.3f K\n", gated_t2m - baseline_t2m)
+control = run_experiment(:control)
+gate_only = run_experiment(:gate_only)
+full_gspt = run_experiment(:full_gspt)
+control_t2m = summarize("Experiment A: control", control)
+gate_only_t2m = summarize("Experiment B: gate-only", gate_only)
+full_gspt_t2m = summarize("Experiment C: full GSPT", full_gspt)
+@printf("Final T_2m difference (gate-only - control): %.3f K\n", gate_only_t2m - control_t2m)
+@printf("Final T_2m difference (full GSPT - control): %.3f K\n", full_gspt_t2m - control_t2m)

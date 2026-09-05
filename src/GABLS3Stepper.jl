@@ -125,6 +125,9 @@ struct SCMDiagnostics{T<:AbstractFloat}
     gated_levels::Int
     lambda_f::Vector{T}
     gated_mask::BitVector
+    ri_g::Vector{T}
+    override_mask::BitVector
+    gate_diagnostics::Vector{GateDiagnostics{T}}
 end
 
 """
@@ -245,39 +248,71 @@ function _diagnose_t2m(state::SCMState{T}, config::SCMConfig{T}) where {T<:Abstr
 end
 
 """
-    step_scm!(state, config, gating_params, gs_config; enable_gating=true)
+    step_scm!(state, config, gating_params, gs_config;
+              closure_mode=:full_gspt, enable_gating=true)
 
 Advances the opt-in single-column benchmark one backward-Euler diffusion step.
-The gate only replaces diagnosed diffusivities after they are computed; it does
-not change the underlying stability or turbulence closure.
+`closure_mode=:control` applies classical Richardson-number quenching.
+`:gate_only` preserves that closure but restores floors only for auditable gate
+overrides. `:full_gspt` uses the regularized transport diagnostic and its
+geometry-aware floor policy. All modes share the same implicit transport and
+surface-energy solver.
 """
 function step_scm!(
     state::SCMState{T},
     config::SCMConfig{T},
     gating_params::BifurcationGatingParams{T},
     gs_config::GSPTModelConfig{T};
+    closure_mode::Symbol=:full_gspt,
     enable_gating::Bool=true,
 ) where {T<:AbstractFloat}
+    closure_mode in (:control, :gate_only, :full_gspt) || throw(ArgumentError(
+        "closure_mode must be :control, :gate_only, or :full_gspt",
+    ))
     n_levels = length(state.z)
     length(config.dz) == n_levels - 1 || throw(ArgumentError("state and config grids differ"))
     shear = sqrt.(_vertical_gradient(state.u, state.z) .^ 2 + _vertical_gradient(state.v, state.z) .^ 2)
     N2 = T(GRAVITY) ./ state.theta_v .* _vertical_gradient(state.theta_v, state.z)
     zeta = N2 ./ (shear .^ 2 .+ sqrt(eps(T)))
     zeta_z = _vertical_gradient(zeta, state.z)
-    K_m = max.(config.km_background, gs_config.l0 .* sqrt.(max.(state.tke, zero(T))))
-    K_h = max.(config.kh_background, K_m ./ T(1.5))
+    base_K_m = gs_config.l0 .* sqrt.(max.(state.tke, zero(T)))
+    base_K_h = base_K_m ./ T(1.5)
+    K_m = similar(base_K_m)
+    K_h = similar(base_K_h)
     lambda_f = Vector{T}(undef, n_levels)
     gated_mask = falses(n_levels)
+    override_mask = falses(n_levels)
+    gate_diagnostics = Vector{GateDiagnostics{T}}(undef, n_levels)
 
     for index in eachindex(state.z)
         jacobian = map_gabls3_to_jacobian(index, state.tke, shear, N2, gs_config)
-        lambda_f[index] = extract_fast_eigenvalue(
-            jacobian, state.gating_states[index]; complex_policy=:real_part,
+        rig_shutdown = zeta[index] >= config.bulk_richardson_critical
+        gate_diagnostics[index] = evaluate_gate_step!(
+            state.gating_states[index], jacobian, zeta_z[index], rig_shutdown,
+            gating_params; complex_policy=:real_part,
         )
-        if enable_gating
-            K_m[index], K_h[index], gated_mask[index] = update_gating_state!(
-                state.gating_states[index], lambda_f[index], zeta_z[index], K_m[index], K_h[index], gating_params,
-            )
+        lambda_f[index] = gate_diagnostics[index].lambda_f
+        override_mask[index] = gate_diagnostics[index].q_override
+        stability_factor = rig_shutdown ? zero(T) :
+            max(zero(T), one(T) - max(zeta[index], zero(T)) / config.bulk_richardson_critical)^2
+
+        if closure_mode === :control || closure_mode === :gate_only
+            K_m[index] = max(config.km_background, base_K_m[index] * stability_factor)
+            K_h[index] = max(config.kh_background, base_K_h[index] * stability_factor)
+            if closure_mode === :gate_only && enable_gating && override_mask[index]
+                K_m[index] = max(K_m[index], gating_params.km_floor)
+                K_h[index] = max(K_h[index], gating_params.kh_floor)
+                gated_mask[index] = true
+            end
+        else
+            K_m[index] = max(config.km_background, base_K_m[index])
+            K_h[index] = max(config.kh_background, base_K_h[index])
+            if enable_gating && gate_diagnostics[index].gate_active &&
+               gate_diagnostics[index].is_coordinate_regular
+                K_m[index] = max(K_m[index], gating_params.km_floor)
+                K_h[index] = max(K_h[index], gating_params.kh_floor)
+                gated_mask[index] = true
+            end
         end
     end
 
@@ -326,6 +361,7 @@ function step_scm!(
     return SCMDiagnostics(
         _diagnose_t2m(state, config), _boundary_layer_height(state, config), surface_heat_flux,
         net_radiative_flux, ground_heat_flux, count(gated_mask), lambda_f, gated_mask,
+        zeta, override_mask, gate_diagnostics,
     )
 end
 

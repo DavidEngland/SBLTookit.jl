@@ -44,8 +44,8 @@ export GSPTPhase2, ProfileData, CoordinateGeometry, ConstitutiveGeometry,
     ObservationDiagnostic, DiagnosticResult, DomainMetrics,
     compute_gspt, compare_tracks, check_tangential_cone,
     ingest_netcdf_gspt, plot_gspt_transition
-export SBLGating, BifurcationGatingParams, GatingState,
-    extract_fast_eigenvalue, update_gating_state!
+export SBLGating, BifurcationGatingParams, GatingState, GateDiagnostics,
+    extract_fast_eigenvalue, evaluate_gate_step!, update_gating_state!
 export GABLS3Adapters, GSPTModelConfig, map_gabls3_to_jacobian,
     compute_fold_ratio
 export GABLS3Stepper, SCMState, SCMConfig, SCMDiagnostics, solve_tridiagonal!,

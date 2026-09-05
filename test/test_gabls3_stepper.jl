@@ -40,6 +40,14 @@ using SBLToolkit
     @test gated_diagnostics.gated_levels == length(z)
     @test all(gated_diagnostics.lambda_f .<= gate_params.epsilon_on)
 
+    shutdown_state = SCMState(z, 0.1 .* z, zeros(length(z)),
+        280.0 .+ 0.1 .* z, fill(1e-4, length(z)), 279.0)
+    shutdown_diagnostics = step_scm!(shutdown_state, config, gate_params, gs_config;
+        closure_mode=:gate_only, enable_gating=true)
+    @test any(shutdown_diagnostics.ri_g .>= config.bulk_richardson_critical)
+    @test any(shutdown_diagnostics.override_mask)
+    @test shutdown_diagnostics.gated_levels == count(shutdown_diagnostics.override_mask)
+
     solution = zeros(3)
     solve_tridiagonal!(solution, [-1.0, -1.0], [2.0, 2.0, 2.0], [-1.0, -1.0], [1.0, 0.0, 1.0])
     @test solution ≈ [1.0, 1.0, 1.0]

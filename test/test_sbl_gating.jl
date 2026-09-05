@@ -63,6 +63,29 @@ using SBLToolkit
         @test isnothing(state.prev_v_f)
     end
 
+    @testset "Gate diagnostics audit the geometric override" begin
+        continuity_params = BifurcationGatingParams(
+            epsilon_on=-0.10, epsilon_off=-0.05, zeta_z_tol=1e-2,
+            min_mode_overlap=0.8,
+        )
+        state = GatingState(Float64)
+        diagnostics = evaluate_gate_step!(
+            state, [-0.412 0.0; 0.0 -0.01], 1e-4, true, continuity_params,
+        )
+        @test diagnostics.lambda_f == -0.412
+        @test diagnostics.mode_overlap == 1.0
+        @test diagnostics.gate_active
+        @test diagnostics.is_coordinate_regular
+        @test diagnostics.q_override
+
+        diagnostics = evaluate_gate_step!(
+            state, [-0.211 -0.201; -0.201 -0.211], 1e-4, true, continuity_params,
+        )
+        @test diagnostics.mode_overlap ≈ inv(sqrt(2))
+        @test !diagnostics.gate_active
+        @test !diagnostics.q_override
+    end
+
     @testset "GABLS3 Jacobian adapter and fold audit" begin
         config = GSPTModelConfig()
         jacobian = map_gabls3_to_jacobian(2, [0.1, 0.05], [0.2, 0.1], [0.01, 0.02], config)

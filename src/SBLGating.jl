@@ -2,8 +2,8 @@ module SBLGating
 
 using LinearAlgebra
 
-export BifurcationGatingParams, GatingState, extract_fast_eigenvalue,
-    update_gating_state!
+export BifurcationGatingParams, GatingState, GateDiagnostics,
+    extract_fast_eigenvalue, evaluate_gate_step!, update_gating_state!
 
 """
     BifurcationGatingParams{T}
@@ -19,6 +19,7 @@ struct BifurcationGatingParams{T<:AbstractFloat}
     zeta_z_tol::T
     km_floor::T
     kh_floor::T
+    min_mode_overlap::T
 end
 
 function BifurcationGatingParams(
@@ -27,24 +28,30 @@ function BifurcationGatingParams(
     zeta_z_tol::Real=1e-2,
     km_floor::Real=0.1,
     kh_floor::Real=0.01,
+    min_mode_overlap::Real=0.70,
 )
     T = promote_type(typeof(float(epsilon_on)), typeof(float(epsilon_off)),
-        typeof(float(zeta_z_tol)), typeof(float(km_floor)), typeof(float(kh_floor)))
-    values = T.((epsilon_on, epsilon_off, zeta_z_tol, km_floor, kh_floor))
+        typeof(float(zeta_z_tol)), typeof(float(km_floor)), typeof(float(kh_floor)),
+        typeof(float(min_mode_overlap)))
+    values = T.((epsilon_on, epsilon_off, zeta_z_tol, km_floor, kh_floor, min_mode_overlap))
     all(isfinite, values) || throw(ArgumentError("gating parameters must be finite"))
-    epsilon_on_t, epsilon_off_t, zeta_z_tol_t, km_floor_t, kh_floor_t = values
+    epsilon_on_t, epsilon_off_t, zeta_z_tol_t, km_floor_t, kh_floor_t, min_mode_overlap_t = values
     epsilon_on_t < epsilon_off_t < zero(T) || throw(ArgumentError(
         "require epsilon_on < epsilon_off < 0 for attracting-mode hysteresis",
     ))
     zeta_z_tol_t >= zero(T) || throw(ArgumentError("zeta_z_tol must be nonnegative"))
     km_floor_t >= zero(T) || throw(ArgumentError("km_floor must be nonnegative"))
     kh_floor_t >= zero(T) || throw(ArgumentError("kh_floor must be nonnegative"))
+    zero(T) <= min_mode_overlap_t <= one(T) || throw(ArgumentError(
+        "min_mode_overlap must lie in [0, 1]",
+    ))
     return BifurcationGatingParams(
         epsilon_on_t,
         epsilon_off_t,
         zeta_z_tol_t,
         km_floor_t,
         kh_floor_t,
+        min_mode_overlap_t,
     )
 end
 
@@ -59,6 +66,21 @@ mutable struct GatingState{T<:AbstractFloat}
 end
 
 GatingState(::Type{T}) where {T<:AbstractFloat} = GatingState{T}(false, nothing)
+
+"""
+    GateDiagnostics{T}
+
+Immutable audit record for one gate evaluation. `q_override` is true only when
+a Richardson-number shutdown request coincides with a continuous, active fast
+mode at a locally regular coordinate mapping.
+"""
+struct GateDiagnostics{T<:AbstractFloat}
+    lambda_f::T
+    mode_overlap::T
+    gate_active::Bool
+    is_coordinate_regular::Bool
+    q_override::Bool
+end
 
 function _normalized_real_eigensystem(J::AbstractMatrix{T}) where {T<:AbstractFloat}
     size(J) == (2, 2) || throw(ArgumentError("fast-mode extraction requires a 2x2 Jacobian"))
@@ -116,6 +138,38 @@ function extract_fast_eigenvalue(
     end
     state.prev_v_f = copy(vectors[:, index])
     return values[index]
+end
+
+"""
+    evaluate_gate_step!(state, J, zeta_z, rig_shutdown, params; complex_policy=:reject)
+
+Evaluates the tracked fast mode, its continuity with the preceding eigenvector,
+the attracting-mode hysteresis state, coordinate regularity, and the auditable
+Richardson-shutdown override condition.
+"""
+function evaluate_gate_step!(
+    state::GatingState{T},
+    J::AbstractMatrix{T},
+    zeta_z::T,
+    rig_shutdown::Bool,
+    params::BifurcationGatingParams{T};
+    complex_policy::Symbol=:reject,
+) where {T<:AbstractFloat}
+    isfinite(zeta_z) || throw(ArgumentError("zeta_z must be finite"))
+    previous_vector = state.prev_v_f
+    lambda_f = extract_fast_eigenvalue(J, state; complex_policy)
+    mode_overlap = isnothing(previous_vector) || isnothing(state.prev_v_f) ? one(T) :
+        abs(dot(previous_vector, state.prev_v_f))
+    if mode_overlap < params.min_mode_overlap
+        state.is_active = false
+    elseif lambda_f <= params.epsilon_on
+        state.is_active = true
+    elseif lambda_f >= params.epsilon_off
+        state.is_active = false
+    end
+    is_coordinate_regular = abs(zeta_z) <= params.zeta_z_tol
+    q_override = rig_shutdown && state.is_active && is_coordinate_regular
+    return GateDiagnostics(lambda_f, mode_overlap, state.is_active, is_coordinate_regular, q_override)
 end
 
 """
