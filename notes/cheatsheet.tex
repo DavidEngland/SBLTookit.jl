@@ -1,0 +1,206 @@
+\documentclass[9pt,landscape,letterpaper]{article}
+\usepackage[margin=0.35in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+
+% Page styling and layout optimization
+\pagestyle{empty}
+\setlength{\columnsep}{0.25in}
+\setlength{\columnseprule}{0.4pt}
+\setlist{nosep,leftmargin=*,itemsep=2pt,topsep=1pt}
+
+% tcolorbox style — invoke as [cheatsheetbox, title=...], NOT style=cheatsheetbox
+\tcbset{
+  cheatsheetbox/.style={
+    colback=white,
+    colframe=black!75,
+    arc=2pt,
+    outer arc=1pt,
+    top=3pt,
+    bottom=3pt,
+    left=4pt,
+    right=4pt,
+    boxrule=0.7pt,
+    fonttitle=\bfseries\footnotesize,
+    coltitle=white,
+    colbacktitle=black!75,
+    attach boxed title to top left={yshift=-2mm, xshift=2mm},
+    boxed title style={sharp corners=all, size=small},
+    fit to height=0.86\textheight
+  }
+}
+
+\begin{document}
+
+% =============================================================================
+% PAGE 1 (FRONT): SBLTOOLKIT & GSPT CORE ENGINES
+% =============================================================================
+
+\begin{center}
+    \textbf{\large SBLToolkit.jl \& Generalized Similarity Profile Theory (GSPT) Core Math} \\
+    \vskip 0.5mm
+    \footnotesize \textit{Mathematical Framework for Stable Boundary Layer (SBL) Transitions and Bifurcation Gating}
+\end{center}
+\vskip 1mm
+
+\begin{multicols}{3}
+\footnotesize
+
+\begin{tcolorbox}[cheatsheetbox, title=1. GSPT Curvature Decomposition]
+Partitions observed vertical profile curvature into intrinsic thermodynamic and coordinate-mapping components.
+\begin{itemize}
+    \item \textbf{Richardson Mapping Function $R(\zeta)$}:
+    $$R(\zeta) = \zeta \frac{\phi_h(\zeta)}{\phi_m^2(\zeta)} = \zeta \frac{S_m^{3/2}(\zeta)}{S_h(\zeta)}$$
+    Reconciled under $S_m = \phi_m^{-2}$, $S_h = (\phi_m \phi_h)^{-1}$.
+    \item \textbf{Height-Resolved Curvature Decomposition}:
+    $$Ri_{zz} = \underbrace{R''(\zeta)\zeta_z^2}_{C_{\text{const}}} + \underbrace{R'(\zeta)\zeta_{zz}}_{C_{\text{coord}}} + \mathcal{E}_{\Delta z}$$
+    \item \textbf{Coordinate Jacobian $\zeta_z$}:
+    $$\zeta_z = \frac{L(z) - z L'(z)}{L(z)^2} = \frac{1 - \zeta L'(z)}{L(z)}$$
+    \item \textbf{Linear Obukhov Test (No-Fold Gate)}:
+    If $L(z) = L_0 + az$, $L_0 > 0$:
+    $$\zeta_z = \frac{L_0}{(L_0 + az)^2} > 0 \quad \forall z \ge 0$$
+    No finite coordinate turning points can exist.
+    \item \textbf{Nondegenerate Fold Condition}:
+    At a fold locus $z^* > 0$, $L(z^*) \neq 0$:
+    $$\zeta_z(z^*) = 0 \iff L(z^*) = z^* L'(z^*), \ L''(z^*) \neq 0$$
+    $$\zeta_{zz}(z^*) = -\frac{z^* L''(z^*)}{L(z^*)^2}$$
+    \item \textbf{Continuum Curvature at Fold}:
+    $$Ri_{zz}(z^*) = R'(\zeta^*)\zeta_{zz}(z^*) + \mathcal{E}_{\Delta z}$$
+    Strictly coordinate-driven at the fold.
+\end{itemize}
+\end{tcolorbox}
+
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=2. 2D Fast-Slow System \& Gate]
+Models SBL transitions as coupled microscale TKE (fast) and mesoscale shear (slow) dynamics.
+\begin{center}
+\textbf{Decoupling Principle \& Operational Gate}\\[2pt]
+$\underbrace{\zeta_z = 0}_{\text{Kinematic Fold}} \ \not\!\!\!\!\Longleftrightarrow \ \underbrace{\lambda_f = 0}_{\text{Bifurcation}}$\\[4pt]
+\fbox{$G = \mathbf{1}\left(\lambda_f \ge -\epsilon_\lambda\right)$}
+\end{center}
+\begin{itemize}
+    \item \textbf{Fast Subsystem TKE Equation ($\dot{e}$)}:
+    $$\epsilon \frac{de}{dt} = l_0 \sqrt{e + \delta} S^2 - B_{0,\max}\left(\frac{e^2}{e^2 + \delta_{\text{reg}}^2}\right) - \frac{e^{3/2}}{l_0}$$
+    $\delta = 10^{-6}\,\text{m}^2\text{s}^{-2}$; $B_{0,\max}$ in $\text{m}^2\text{s}^{-3}$.
+    \item \textbf{Slow Subsystem Wind Shear ($\dot{S}$)}:
+    $$\frac{dS}{dt} = G_0 - \gamma_s e S - r_s S$$
+    \item \textbf{Fast Stability Eigenvalue ($\lambda_f$)}:
+    $$\lambda_f(e, S) = \frac{1}{\epsilon} \frac{\partial F}{\partial e} \quad (\text{attracting if } \lambda_f < 0)$$
+    \item \textbf{Saddle-Node Fold Locus}:
+    $$e_{\text{fold}} = \frac{l_0}{\sqrt{3}}\sqrt{S_{\text{fold}}^2 + \beta N^2}$$
+    Derived at the critical boundary $\partial F / \partial e = 0$.
+\end{itemize}
+\end{tcolorbox}
+
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=3. SCM Implicit Coupling \& SEB]
+Couples surface energy balance (SEB) directly into the tridiagonal vertical diffusion solver.
+\begin{itemize}
+    \item \textbf{Surface Energy Balance}:
+    $$C_s \frac{\partial T_s}{\partial t} = R_n(t) - H_0(t) - G_s(t)$$
+    $$H_0 = \rho c_p K_h(z_1) \left(\frac{\theta_1 - T_s}{z_1}\right)$$
+    $$G_s = K_s (T_s - T_{\text{deep}})$$
+    \item \textbf{Backward-Euler SEB Solution}:
+    $$\gamma \equiv \frac{\rho c_p K_h^{n+1}}{z_1}, \quad \beta \equiv \frac{C_s}{\Delta t} + \gamma + K_s$$
+    \item \textbf{Updated Surface Temperature ($T_s^{n+1}$)}:
+    $$T_s = \frac{1}{\beta} \left[ \tfrac{C_s}{\Delta t} T_s^n + R_n^{n+1} + \gamma \theta_1^{n+1} + K_s T_{\text{deep}} \right]$$
+    \item \textbf{Implementation}: Substituting $T_s^{n+1}$ into the level-1 diffusion equation absorbs coupling into tridiagonal coefficients $B_1$, $C_1$.
+\end{itemize}
+\end{tcolorbox}
+
+\end{multicols}
+
+\newpage
+
+% =============================================================================
+% PAGE 2 (BACK): REFERENCE FORMULATIONS & INVERSION STANDARDS
+% =============================================================================
+
+\begin{center}
+    \textbf{\large SBL Inversion Reference, Closures, and NWP Mandates} \\
+    \vskip 0.5mm
+    \footnotesize \textit{Regularization Standards, Similarity Closures, and Multi-Campaign Audit Guidelines}
+\end{center}
+\vskip 1mm
+
+\begin{multicols}{3}
+\footnotesize
+
+\begin{tcolorbox}[cheatsheetbox, title=4. Track A Primitive Regularization]
+Smoothes sensors prior to taking non-linear spatial quotients to bypass the non-commutation hazard.
+\begin{itemize}
+    \item \textbf{The Non-Commutation Hazard}:
+    $$\mathcal{M}_\delta \left[ A / B \right] \neq \mathcal{M}_\delta A / \mathcal{M}_\delta B$$
+    Filtering $Ri_g$ manufactures false knees.
+    \item \textbf{Tikhonov-Morozov Spline Functional}:
+    $$\min_{f_s} \sum_{i=1}^{N_{\text{obs}}} \left( \frac{f_s(\xi_i) - q_i}{\sigma_i} \right)^2 + \alpha \int_0^{\xi_{\max}} [f_s''(\xi)]^2 d\xi$$
+    $\xi \equiv \ln(z/z_0)$. Solve $\alpha$ via bisection until
+    $$\|f_s(\xi_i) - q_i\|_2 = \delta$$
+    \item \textbf{Tangential Cone Condition}:
+    $$\|F(x_2) - F(x_1) - F'(x_1)(x_2 - x_1)\|$$
+    $$\le \ \gamma \|F(x_2) - F(x_1)\|$$
+    Guarantees stable convergence of the MDP filter.
+    \item \textbf{Analytical Derivatives}:
+    $$\frac{df}{dz} = \frac{1}{z} \frac{df}{d\xi}$$
+    $$\frac{d^2f}{dz^2} = \frac{1}{z^2}\frac{d^2f}{d\xi^2} - \frac{1}{z^2}\frac{df}{d\xi}$$
+\end{itemize}
+\end{tcolorbox}
+
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=5. Empirical Stability Closures]
+Eddy diffusivity stability functions $S_m, S_h$.
+\begin{itemize}
+    \item \textbf{Stability Function Definitions}:
+    $$K_m = l_m^2 s S_m(\zeta), \quad K_h = l_m^2 s S_h(\zeta)$$
+    $$S_m(\zeta) = \phi_m^{-2}(\zeta), \quad S_h(\zeta) = (\phi_m(\zeta)\phi_h(\zeta))^{-1}$$
+    \item \textbf{Symmetric Quadratic Closures ($Pr = 1$)}:
+    $$S(Ri) = \begin{cases} (1 - Ri/Ri_c)^2, & Ri \le Ri_c \\ 0, & Ri > Ri_c \end{cases}$$
+    $S(Ri)$, $S'(Ri)$ are $C^1$-continuous across $Ri_c = 0.25$.
+    \item \textbf{GLGS (eMOST / SHEBA Formulation)}:
+    $$\phi_m(\zeta) = 1 + \frac{a_m \zeta}{(1 + b_m \zeta)^{2/3}}$$
+    $$\phi_h(\zeta) = Pr_0 \left( 1 + \frac{a_h \zeta}{1 + b_h \zeta} \right)$$
+    $$\psi_m(\zeta) = -3 \frac{a_m}{b_m} \left[(1+b_m\zeta)^{1/3} - 1\right]$$
+    \item \textbf{Triple-Point Dispersion ($\delta_{\text{TP}}$)}:
+    $$\delta_{\text{TP}}(t) = \frac{\max(z_K, z_e, z_{e_z}) - \min(z_K, z_e, z_{e_z})}{H_{\text{SBL}}(t)}$$
+    Verified collapse events require $\delta_{\text{TP}} < 0.10$.
+\end{itemize}
+\end{tcolorbox}
+
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=6. Campaign Reference \& Mandates]
+\textbf{SBL Campaign Resolution Guidelines}
+\begin{center}
+\setlength{\tabcolsep}{3pt}
+\footnotesize
+\begin{tabular}{lccc}
+    \toprule
+    \textbf{Campaign} & $N_z$ & \textbf{Feature} & \textbf{Status} \\
+    \midrule
+    CASES-99 & 150 & LLJ Nose Fold & \textbf{Success} \\
+    GABLS3 & 150 & Shear Erosion & \textbf{SCM Closed} \\
+    SHEBA & 2 & Stencil Collapse & \textbf{Fallback} \\
+    \bottomrule
+\end{tabular}
+\end{center}
+\vskip 0.5mm
+\textbf{The Four Operational NWP Mandates}:
+\begin{enumerate}
+    \item \textbf{Track A Regularization}: Smooth primitive state vectors ($u,v,\theta_v$) before computing $Ri_g$ or spatial derivatives.
+    \item \textbf{Fast Stability Gating}: Gate transitions by direct eigenvalue evaluation $G = \mathbf{1}(\lambda_f \ge -\epsilon_\lambda)$ to prevent "Fold Illusion" shutdowns.
+    \item \textbf{Cease Empirical Tuning}: Do not adjust $\beta_m, \beta_h$ to fit profile knees; these are kinematic coordinate features.
+    \item \textbf{Enforce $N_z \ge 3$ Ingestion Gates}: Bypass curvature stencils on sparse grids. Use Bulk Richardson fallback:
+    $$Ri_b = \frac{g}{\overline{\theta_v}} \frac{(z_2 - z_1)(\theta_{v,2} - \theta_{v,1})}{(u_2 - u_1)^2 + (v_2 - v_1)^2}$$
+\end{enumerate}
+\end{tcolorbox}
+
+\end{multicols}
+
+\end{document}

@@ -36,13 +36,20 @@ function safe_float(val)
     return NaN
 end
 
-function rig_to_zeta(rig::Float64)
+"""
+    rig_to_zeta_z0hr(rig::Float64; gamma::Float64 = 0.25)
+
+Maps Gradient Richardson number to stability parameter ζ using Zero-Offset Hyperbolic
+Regularization (Z0HR). Eliminates singularities at Ri_g -> 0.20 while maintaining
+asymptotic correspondence with Monin-Obukhov similarity theory for weak stability.
+"""
+function rig_to_zeta_z0hr(rig::Float64; gamma::Float64=0.25)
     !isfinite(rig) && return NaN
     if rig >= 0.0
-        rig_c = min(rig, 0.19) # Cap below critical Ri_g ~ 0.2 singularity
-        return rig_c / (1.0 - 5.0 * rig_c)
+        denom = 1.0 - (5.0 * rig) / (1.0 + gamma * rig^2)
+        return rig / max(denom, 0.05) # guarantees strict positivity, no derivative step-changes
     else
-        return rig
+        return rig / sqrt(1.0 - 16.0 * rig) # Businger-Dyer unstable branch
     end
 end
 
@@ -77,10 +84,10 @@ function interpolate_profile_1d(f_raw::Vector{Float64}, z_raw::Vector{Float64}, 
         if zt < zr[1] || zt > zr[end]
             continue # Avoid unconstrained extrapolation
         end
-        idx = findfirst(z -> z >= zt, zr)
+        idx = searchsortedfirst(zr, zt)
         if idx == 1
             f_out[k] = fr[1]
-        elseif idx !== nothing
+        elseif idx <= length(zr)
             z0, z1 = zr[idx-1], zr[idx]
             f0, f1 = fr[idx-1], fr[idx]
             f_out[k] = f0 + (f1 - f0) * (zt - z0) / (z1 - z0)
@@ -138,20 +145,22 @@ end
 function uniform_gradient_1d(f::Vector{Float64}, dz::Float64)
     n = length(f)
     df = fill(NaN, n)
-    valid_idx = findall(isfinite, f)
-    length(valid_idx) < 3 && return df
 
-    fv = f[valid_idx]
-    nv = length(fv)
-    dfv = zeros(Float64, nv)
-
-    dfv[1] = (fv[2] - fv[1]) / dz
-    dfv[end] = (fv[end] - fv[end-1]) / dz
-    for i in 2:(nv-1)
-        dfv[i] = (fv[i+1] - fv[i-1]) / (2.0 * dz)
+    if n >= 2
+        if isfinite(f[1]) && isfinite(f[2])
+            df[1] = (f[2] - f[1]) / dz
+        end
+        if isfinite(f[end]) && isfinite(f[end-1])
+            df[end] = (f[end] - f[end-1]) / dz
+        end
     end
 
-    df[valid_idx] .= dfv
+    for i in 2:(n-1)
+        if isfinite(f[i-1]) && isfinite(f[i+1])
+            df[i] = (f[i+1] - f[i-1]) / (2.0 * dz)
+        end
+    end
+
     return df
 end
 
@@ -159,13 +168,49 @@ function uniform_hessian_1d(f::Vector{Float64}, dz::Float64)
     return uniform_gradient_1d(uniform_gradient_1d(f, dz), dz)
 end
 
-function assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
+"""
+    build_operators(z::Vector{Float64})
+
+Computes non-uniform 1st (D1) and 2nd (D2) derivative operator matrices on discrete
+tower levels using local 3-point Taylor-Vandermonde systems.
+"""
+function build_operators(z::Vector{Float64})
+    n = length(z)
+    D1 = zeros(Float64, n, n)
+    D2 = zeros(Float64, n, n)
+
+    for i in 1:n
+        # Select 3 local nodes (asymmetric at boundaries, centered in interior)
+        idx = if i == 1
+            1:3
+        elseif i == n
+            (n-2):n
+        else
+            (i-1):(i+1)
+        end
+
+        zi = z[idx]
+        z0 = z[i]
+
+        # f(z_j) = f(z0) + f'(z0)(z_j - z0) + 1/2 f''(z0)(z_j - z0)^2
+        A = [ones(3)'; (zi .- z0)'; 0.5 .* (zi .- z0) .^ 2']
+
+        w1 = A \ [0.0, 1.0, 0.0] # 1st derivative stencil weights
+        w2 = A \ [0.0, 0.0, 1.0] # 2nd derivative stencil weights
+
+        D1[i, idx] .= w1
+        D2[i, idx] .= w2
+    end
+
+    return D1, D2
+end
+
+# All-NaN Hessian fields; sparse towers (Nz < 3) cannot support a stencil-based curvature.
+function assemble_bulk_fallback(timestamps, raw_z_levels, raw_zeta_mat)
     nt = length(timestamps)
     z_target = COMMON_Z_GRID
     nz_target = length(z_target)
-    dz = z_target[2] - z_target[1]
 
-    # Interpolate input profiles onto standard z grid
     zeta_mat = fill(NaN, nz_target, nt)
     for j in 1:nt
         zeta_mat[:, j] = interpolate_profile_1d(raw_zeta_mat[:, j], raw_z_levels, z_target)
@@ -178,11 +223,63 @@ function assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
         end
     end
 
+    return (
+        timestamps=timestamps,
+        z_levels=z_target,
+        inv_L=inv_L_mat,
+        zeta=zeta_mat,
+        zeta_z=fill(NaN, nz_target, nt),
+        zeta_zz=fill(NaN, nz_target, nt)
+    )
+end
+
+"""
+    assemble_derivatives_track_a(timestamps, raw_z_levels, raw_zeta_mat)
+
+Constructs smooth vertical derivatives on native tower heights prior to standard-grid
+interpolation, avoiding the piecewise-linear Hessian-zeroing artifact.
+"""
+function assemble_derivatives_track_a(timestamps, raw_z_levels::Vector{Float64}, raw_zeta_mat::Matrix{Float64})
+    nt = length(timestamps)
+    nz_raw = length(raw_z_levels)
+
+    if nz_raw < 3
+        @warn "Stencil collapse gate triggered (Nz = $nz_raw < 3). Routing to bulk fallback (no Hessian)."
+        return assemble_bulk_fallback(timestamps, raw_z_levels, raw_zeta_mat)
+    end
+
+    z_target = COMMON_Z_GRID
+    nz_target = length(z_target)
+
+    D1_native, D2_native = build_operators(raw_z_levels)
+
+    zeta_mat = fill(NaN, nz_target, nt)
     zeta_z_mat = fill(NaN, nz_target, nt)
     zeta_zz_mat = fill(NaN, nz_target, nt)
-    for j in 1:nt
-        zeta_z_mat[:, j] = uniform_gradient_1d(zeta_mat[:, j], dz)
-        zeta_zz_mat[:, j] = uniform_hessian_1d(zeta_mat[:, j], dz)
+    inv_L_mat = fill(NaN, nz_target, nt)
+
+    raw_z_z = zeros(nz_raw)
+    raw_z_zz = zeros(nz_raw)
+
+    @inbounds for j in 1:nt
+        raw_zeta = view(raw_zeta_mat, :, j)
+        valid_idx = findall(isfinite, raw_zeta)
+
+        if length(valid_idx) >= 3
+            # Differentiate on the native irregular grid BEFORE spatial interpolation
+            raw_z_z .= D1_native * raw_zeta
+            raw_z_zz .= D2_native * raw_zeta
+
+            zeta_mat[:, j] = interpolate_profile_1d(collect(raw_zeta), raw_z_levels, z_target)
+            zeta_z_mat[:, j] = interpolate_profile_1d(raw_z_z, raw_z_levels, z_target)
+            zeta_zz_mat[:, j] = interpolate_profile_1d(raw_z_zz, raw_z_levels, z_target)
+
+            for i in 1:nz_target
+                if isfinite(zeta_mat[i, j])
+                    inv_L_mat[i, j] = zeta_mat[i, j] / z_target[i]
+                end
+            end
+        end
     end
 
     return (
@@ -204,10 +301,12 @@ function parse_obukhov_from_df(df::DataFrame, campaign_name::String)
     time_col = match_fuzzy_col(cols, ["sample_index", "sampleindex", "time_value", "time", "datetime", "index"])
     time_col === nothing && error("No valid time column found.")
 
-    timestamps = sort(unique([safe_float(v) for v in df[!, time_col]]))
-    timestamps = filter(isfinite, timestamps)
+    raw_times = safe_float.(df[!, time_col])
+    valid_time_mask = isfinite.(raw_times)
+    timestamps = sort(unique(raw_times[valid_time_mask]))
     nt = length(timestamps)
     time_map = Dict(t => j for (j, t) in enumerate(timestamps))
+    row_time_indices = [get(time_map, t, 0) for t in raw_times]
 
     rig_cols = Symbol[]
     rig_heights = Float64[]
@@ -227,17 +326,17 @@ function parse_obukhov_from_df(df::DataFrame, campaign_name::String)
         raw_zeta_mat = fill(NaN, nz_raw, nt)
 
         for (i, col) in enumerate(sorted_cols)
-            for row in eachrow(df)
-                t_val = safe_float(row[time_col])
-                if haskey(time_map, t_val)
-                    rig_val = safe_float(row[col])
-                    raw_zeta_mat[i, time_map[t_val]] = rig_to_zeta(rig_val)
+            col_vals = safe_float.(df[!, col])
+            for r in eachindex(col_vals)
+                t_idx = row_time_indices[r]
+                if t_idx > 0
+                    raw_zeta_mat[i, t_idx] = rig_to_zeta_z0hr(col_vals[r])
                 end
             end
         end
 
         @info "Parsed Multi-Level Ri_g profiles [$campaign_name]: $(count(isfinite, raw_zeta_mat)) raw entries across native heights: $(raw_z_levels)"
-        return assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
+        return assemble_derivatives_track_a(timestamps, raw_z_levels, raw_zeta_mat)
     end
 
     l_col = match_fuzzy_col(cols, ["L_obukhov", "lobukhov", "obukhovlength", "l"])
@@ -246,20 +345,19 @@ function parse_obukhov_from_df(df::DataFrame, campaign_name::String)
         nz_raw = length(raw_z_levels)
         raw_zeta_mat = fill(NaN, nz_raw, nt)
 
-        for row in eachrow(df)
-            t_val = safe_float(row[time_col])
-            if haskey(time_map, t_val)
-                L_val = safe_float(row[l_col])
-                if isfinite(L_val) && abs(L_val) > 1e-4
-                    for i in 1:nz_raw
-                        raw_zeta_mat[i, time_map[t_val]] = raw_z_levels[i] / L_val
-                    end
+        l_vals = safe_float.(df[!, l_col])
+        for r in eachindex(l_vals)
+            t_idx = row_time_indices[r]
+            L_val = l_vals[r]
+            if t_idx > 0 && isfinite(L_val) && abs(L_val) > 1e-4
+                for i in 1:nz_raw
+                    raw_zeta_mat[i, t_idx] = raw_z_levels[i] / L_val
                 end
             end
         end
 
         @info "Parsed 1D Surface L_obukhov [$campaign_name]"
-        return assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
+        return assemble_derivatives_track_a(timestamps, raw_z_levels, raw_zeta_mat)
     end
 
     error("No usable multi-level Ri_g profiles or L_obukhov columns in trajectory file.")
@@ -296,7 +394,13 @@ function load_profile_from_nc(nc_path::String, campaign_name::String; g=9.81, th
         t_key === nothing && error("Missing time dimension in $nc_path.")
         timestamps = Float64.(vec(ds[t_key][:]))
 
-        raw_z_levels = Float64[0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0, 80.0, 100.0]
+        z_key = match_nc_var(keys_list, ["height", "heights", "z", "level", "levels", "depth"])
+        raw_z_levels = if z_key !== nothing
+            Float64.(vec(ds[z_key][:]))
+        else
+            @warn "No NetCDF height coordinate found for $campaign_name; using fallback tower levels."
+            Float64[0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0, 80.0, 100.0]
+        end
         u_star_key = match_nc_var(keys_list, ["ustar", "ustarm", "frictionvelocity"])
         h_key = match_nc_var(keys_list, ["hs", "heatflux", "shf", "wt", "kinematicheatflux", "h", "qsurface"])
 
@@ -318,7 +422,7 @@ function load_profile_from_nc(nc_path::String, campaign_name::String; g=9.81, th
         end
 
         @info "NetCDF Extracted Flux Profiles [$campaign_name]"
-        return assemble_derivatives_from_zeta(timestamps, raw_z_levels, raw_zeta_mat)
+        return assemble_derivatives_track_a(timestamps, raw_z_levels, raw_zeta_mat)
     end
 end
 
@@ -344,8 +448,12 @@ function plot_sbltoolkit_obukhov_panel(data::NamedTuple, campaign_name::String, 
     p3 = heatmap(t_axis, z_axis, clamp.(data.zeta_z, -0.2, 0.2);
         clims=(-0.1, 0.1), color=cg_bwr, title="$(campaign_name) — Jacobian ζ_z", colorbar_title=" ζ_z [m⁻¹]", opts...)
 
-    if count(isfinite, data.zeta_z) > 0
-        contour!(p3, t_axis, z_axis, data.zeta_z, levels=[0.0], color=:white, lw=1.5, ls=:solid)
+    finite_rows = findall(i -> all(isfinite, view(data.zeta_z, i, :)), axes(data.zeta_z, 1))
+    if !isempty(finite_rows)
+        zeta_z_contour = data.zeta_z[finite_rows, :]
+        if minimum(zeta_z_contour) <= 0.0 <= maximum(zeta_z_contour)
+            contour!(p3, t_axis, z_axis[finite_rows], zeta_z_contour, levels=[0.0], color=:white, lw=1.5, ls=:solid)
+        end
     end
 
     p4 = heatmap(t_axis, z_axis, clamp.(data.zeta_zz, -0.05, 0.05);

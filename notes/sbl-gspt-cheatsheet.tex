@@ -1,0 +1,219 @@
+\documentclass[9pt,landscape,letterpaper]{article}
+\usepackage[margin=0.35in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{microtype}
+\usepackage[most]{tcolorbox}
+\usepackage{titling}
+\usepackage{enumitem}
+
+% Page styling and layout optimization
+\pagestyle{empty}
+\setlength{\columnsep}{0.25in}
+\setlength{\columnseprule}{0.4pt}
+\setlist{nosep,leftmargin=*,itemsep=1pt,topsep=1pt}
+
+% Custom boxed sections to save space and look professional
+\tcbset{
+  cheatsheetbox/.style={
+    colback=white,
+    colframe=black!75,
+    arc=2pt,
+    outer arc=1pt,
+    top=3pt,
+    bottom=3pt,
+    left=4pt,
+    right=4pt,
+    boxrule=0.7pt,
+    fonttitle=\bfseries\footnotesize,
+    coltitle=white,
+    colbacktitle=black!75,
+    attach boxed title to top left={yshift=-2mm, xshift=2mm},
+    boxed title style={sharp corners=all, size=small},
+    breakable
+  }
+}
+
+\begin{document}
+
+% =============================================================================
+% ================================== SIDE 1 ===================================
+% =============================================================================
+% --- COOPERATIVE SIDE: SBLTOOLKIT & GSPT CORE ENGINES (FRONT) ----------------
+
+\begin{center}
+    \textbf{\large SBLToolkit.jl \& Generalized Similarity Profile Theory (GSPT) Core Math Cheatsheet} \\
+    \vskip 0.5mm
+    \footnotesize \textit{Compiled for Advanced Boundary-Layer Research and Single-Column Modeling (SCM) Audits}
+\end{center}
+\vskip 1mm
+
+\begin{multicols}{3}
+\footnotesize
+
+\begin{tcolorbox}[cheatsheetbox, title=1. GSPT Curvature Decomposition]
+Transforms physical vertical profiles into flux-coordinate mapping spaces to decouple coordinate stretching from physical collapses.
+\begin{itemize}
+    \item \textbf{Similarity Mapping Coordinate $\zeta(z)$}:
+    $$\zeta(z) = \frac{z}{L(z)} \quad L(z)\text{: Obukhov length profile}$$
+    \item \textbf{Coordinate Jacobian $\zeta_z \equiv \frac{\partial \zeta}{\partial z}$}:
+    $$\zeta_z = \frac{L(z) - z L'(z)}{L(z)^2} = \frac{1 - \zeta L'(z)}{L(z)}$$
+    \item \textbf{Coordinate Curvature $\zeta_{zz} \equiv \frac{\partial^2 \zeta}{\partial z^2}$}:
+    $$\zeta_{zz} = -\frac{L''(z)}{L(z)}\zeta - \frac{2 L'(z)}{L(z)}\zeta_z$$
+    \item \textbf{Height-Resolved Curvature Decomposition}:
+    $$Ri_{zz} \equiv \frac{d^2 Ri_g}{dz^2} = \underbrace{S'_h(\zeta)\zeta_z^2}_{C_{\text{const}}} + \underbrace{S_m(\zeta)\zeta_{zz}}_{C_{\text{coord}}} + \mathcal{E}_{\Delta z}$$
+    \item \textbf{Linear Obukhov Profile Test} (No Fold Gate):
+    If $L(z) = L_0 + az$:
+    $$L''(z) = 0 \implies \zeta_z = \frac{L_0}{(L_0 + az)^2} > 0 \ \forall z \ge 0$$
+    No finite coordinate folds can exist; mapping is globally monotone.
+    \item \textbf{Nondegenerate Coordinate Fold Condition}:
+    $$\zeta_z(z^*) = 0 \iff L(z^*) = z^* L'(z^*) \ \text{under } L''(z^*) \neq 0$$
+    At the fold locus $z^*$, observed curvature is purely coordinate-driven:
+    $$Ri_{zz}(z^*) = -\frac{z^* L''(z^*)}{L(z^*)^2 (1 + \beta_m \zeta^*)^2}$$
+    \item \textbf{GSPT Fold Ratio Metric}:
+    $$\text{Fold Ratio}(z) = \frac{|C_{\text{coord}}(z)|}{|C_{\text{const}}(z)| + |C_{\text{coord}}(z)| + \epsilon_c K_0}$$
+\end{itemize}
+\end{tcolorbox}
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=2. 2D Fast-Slow SBL Dynamical System]
+Models stable boundary layers as coupled singular perturbation systems in 2D phase space.
+\begin{itemize}
+    \item \textbf{Fast Subsystem TKE Equation ($\dot{e}$, $e \ge 0$)}:
+    $$\epsilon \frac{de}{dt} = l_0 \sqrt{e + \delta} S^2 - B_{0,\max}\left(\frac{e^2}{e^2 + \delta_{\text{reg}}^2}\right) - \frac{e^{3/2}}{l_0}$$
+    \item \textbf{Velocity Regularization Floor $\delta$}: $10^{-6}\,\text{m}^2\text{s}^{-2}$, restores $C^1$-continuity across zero-energy limits.
+    \item \textbf{Slow Subsystem Wind Shear Equation}:
+    $$\frac{dS}{dt} = G_0 - \gamma_s e S - r_s S$$
+    \item \textbf{Fast Subsystem Stability Eigenvalue ($\lambda_f$)}:
+    $$\lambda_f(e, S) = \frac{l_0 S^2}{2\sqrt{e+\delta}} - \frac{2 B_{0,\max} e \delta_{\text{reg}}^2}{(e^2 + \delta_{\text{reg}}^2)^2} - \frac{3\sqrt{e}}{2l_0}$$
+    \item \textbf{Unregularized Saddle-Node Fold Locus ($\lambda_f = 0$)}:
+    $$x^3 + a x^2 - C = 0 \ \left(x \equiv S_{\text{fold}}^2, a \equiv \beta N^2, C \equiv \tfrac{27 B_{0,\max}^2}{4l_0^4}\right)$$
+    $$e_{\text{fold}} = \frac{l_0}{\sqrt{3}}\sqrt{S_{\text{fold}}^2 + \beta N^2} = \frac{3 B_{0,\max}}{2 l_0 S_{\text{fold}}^2}$$
+    \item \textbf{Full 2D System Saddle-Node Boundary ($\det J = 0$)}:
+    $$\det J = \frac{1}{\epsilon} \left[ -F_e(\gamma_s e + r_s) + \gamma_s S F_S \right] = 0$$
+    \item \textbf{Manifold Adhesion Distance ($d_\perp$)}:
+    $$d_\perp(t) = \frac{|F(e,S)|}{\|\nabla_{e,S} F\| + \epsilon_{\text{floor}}}$$
+\end{itemize}
+\end{tcolorbox}
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=3. SCM Implicit Coupling \& SEB]
+Analytically couples prognostic land-surface energy balance directly into vertical tridiagonal diffusion arrays to eliminate stiff numerical instabilities.
+\begin{itemize}
+    \item \textbf{Continuous Prognostic Surface Energy Balance}:
+    $$C_s \frac{\partial T_s}{\partial t} = R_n(t) - H_0(t) - G_s(t)$$
+    \item \textbf{Boundary Fluxes}:
+    $$H_0 = \rho c_p K_h(z_1) \left(\frac{\theta_1 - T_s}{z_1}\right), \quad G_s = K_s (T_s - T_{\text{deep}})$$
+    \item \textbf{Simultaneous Backward-Euler Discretization}:
+    $$\gamma \equiv \frac{\rho c_p K_h^{n+1}}{z_1}, \quad \beta \equiv \frac{C_s}{\Delta t} + \gamma + K_s$$
+    \item \textbf{Analytical Elimination of surface $T_s^{n+1}$}:
+    $$T_s^{n+1} = \frac{1}{\beta} \left[ \frac{C_s}{\Delta t} T_s^n + R_n^{n+1} + \gamma \theta_1^{n+1} + K_s T_{\text{deep}} \right]$$
+    \item \textbf{Tridiagonal Atmospheric Row Integration ($z_1$)}:
+    $$\frac{\theta_1^{n+1} - \theta_1^n}{\Delta t} = \frac{K_h^{n+1}}{\Delta z_1} \left[ \frac{\theta_2^{n+1} - \theta_1^{n+1}}{\Delta z_{12}} - \frac{\theta_1^{n+1} - T_s^{n+1}}{z_1} \right]$$
+    Substituting $T_s^{n+1}$ absorbs the boundary term into the primary diagonal ($B_1$) and superdiagonal ($C_1$), solved in-place.
+\end{itemize}
+\end{tcolorbox}
+
+\end{multicols}
+
+\clearpage
+
+% =============================================================================
+% ================================== SIDE 2 ===================================
+% =============================================================================
+% --- REFERENCE SIDE: REGIME CLOSED EQUATIONS & OBSERVATIONS (BACK) ----------
+
+\begin{center}
+    \textbf{\large SBL Inversion Standards, Empirical Closures, and Campaign Reference} \\
+    \vskip 0.5mm
+    \footnotesize \textit{Auxiliary Standard Scaling Formulations, GSPT Taxonomy, and Operational NWP Mandates}
+\end{center}
+\vskip 1mm
+
+\begin{multicols}{3}
+\footnotesize
+
+\begin{tcolorbox}[cheatsheetbox, title=4. Track A Primitive Field Regularization]
+Smoothes linear, Gaussian sensor fields prior to taking non-linear spatial quotients to bypass the non-commutation hazard.
+\begin{itemize}
+    \item \textbf{The Non-Commutation Hazard}:
+    $$\mathcal{M}_\delta \left[ \frac{A}{B} \right] \neq \frac{\mathcal{M}_\delta A}{\mathcal{M}_\delta B} \implies \text{Smoothing } Ri_g \text{ generates knees.}$$
+    \item \textbf{Wavenumber Transformation Coordinate}:
+    $$\xi \equiv \ln(z / z_0) \quad z_0\text{: aerodynamic roughness}$$
+    \item \textbf{Tikhonov-Morozov Regularization Spline}:
+    $$\min_{f_s} \sum_{i=1}^{N_{\text{obs}}} \left( \frac{f_s(\xi_i) - q_i}{\sigma_i} \right)^2 + \alpha \int_0^{\xi_{\max}} [f_s''(\xi)]^2 d\xi$$
+    \item \textbf{Morozov's Discrepancy Principle (MDP)}: Solve for $\alpha$ via bisection until $\|f_s(\xi_i) - q_i\|_2 = \delta$.
+    \item \textbf{Tangential Cone Condition} ($\gamma$ non-linearity bound):
+    $$\|F(x_2) - F(x_1) - F'(x_1)(x_2 - x_1)\|_Y \le \gamma \|F(x_2) - F(x_1)\|_Y$$
+    Guarantees stable numerical convergence of bisection sweeps.
+    \item \textbf{Analytical Log-Height Derivatives}:
+    $$\frac{df}{dz} = \frac{1}{z} \frac{df}{d\xi}, \quad \frac{d^2f}{dz^2} = \frac{1}{z^2}\left( \frac{d^2f}{d\xi^2} - \frac{df}{d\xi} \right)$$
+\end{itemize}
+\end{tcolorbox}
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=5. Standard Empirical Closures]
+SBL stability functions ($S_m, S_h$) expressed directly in terms of the gradient Richardson number ($Ri$).
+\begin{itemize}
+    \item \textbf{Prandtl-Normalized Symmetric SBL (for $Pr = 1$)}:
+    $$S_m(Ri) = S_h(Ri) = \begin{cases} \left( \frac{Ri_c - Ri}{Ri_c} \right)^2, & 0 \le Ri \le Ri_c \\ 0, & Ri > Ri_c \end{cases}$$
+    \textit{Quadratic form preserves continuous vertical derivatives at $Ri_c = 0.25$.}
+    \item \textbf{GLGS (eMOST / Modified Grachev et al. 2007)}:
+    $$S_m(\zeta) = \phi_m^{-2} = \left[ 1 + \frac{a_m \zeta}{(1 + b_m \zeta)^{2/3}} \right]^{-2}$$
+    $$S_h(\zeta) = (\phi_m \phi_h)^{-1} = \left[ \phi_m \cdot Pr_0 \left( 1 + \frac{a_h \zeta}{1 + b_h \zeta} \right) \right]^{-1}$$
+    \textit{Constants: $Pr_0 = 0.98, a_m = a_h = 5.0, b_m = 0.3, b_h = 0.4$.}
+    \item \textbf{Integrated Stability Correction Functions}:
+    $$\psi_m(\zeta) = -3 \frac{a_m}{b_m} \left[ (1 + b_m \zeta)^{1/3} - 1 \right]$$
+    $$\psi_h(\zeta) = -Pr_0 \frac{a_h}{b_h} \ln(1 + b_h \zeta)$$
+    \item \textbf{Businger-Dyer (Log-Linear Limit)}:
+    $$\phi_m(\zeta) = 1 + \beta_m \zeta, \quad \phi_h(\zeta) = Pr_0(1 + \beta_h \zeta) \ (\zeta < 0.1)$$
+\end{itemize}
+\tcblower
+\textbf{SBL Quality Control \& Verification Metrics}
+\begin{itemize}
+    \item \textbf{Triple-Point Dispersion ($\delta_{\text{TP}}$)}:
+    $$\delta_{\text{TP}}(t) = \frac{\max(z_K, z_e, z_{e_z}) - \min(z_K, z_e, z_{e_z})}{H_{\text{SBL}}(t)} \le 0.10$$
+    \textit{Tracks cutoff convergence; gated where $\delta_{\text{TP}} < 0.1$.}
+    \item \textbf{Wave-Jet CEOF Separation Phase Gradient}:
+    $$\bar{\nabla \theta}_{\text{weighted}} = \frac{\sum_{i=1}^{N_z} |A(z_i)| \left| \frac{\partial \theta}{\partial z} \right|_{z_i}}{\sum_{i=1}^{N_z} |A(z_i)|}$$
+    \textit{Standing LLJ jets isolated where $\bar{\nabla \theta}_{\text{weighted}} < 0.02$ rad/m.}
+\end{itemize}
+\end{tcolorbox}
+\columnbreak
+
+\begin{tcolorbox}[cheatsheetbox, title=6. Campaign Taxonomy \& NWP Mandates]
+Standards for vertical tower footprints and multi-campaign diagnostics.
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccc}
+    \toprule
+    \textbf{Campaign} & $N_z$ & \textbf{Geometry} & \textbf{GSPT} \\
+    \midrule
+    CASES-99 & 150 & Jet nose fold & \textbf{Success} \\
+    GABLS3 & 150 & Shear erosion & \textbf{Success} \\
+    SHEBA & 2 & Stencil collapse & \textbf{Bypassed} \\
+    \bottomrule
+\end{tabular}
+\end{center}
+\vskip 0.5mm
+\textbf{The Four-Level Diagnostic Hierarchy}:
+\begin{center}
+\footnotesize
+\fbox{\parbox{0.9\linewidth}{\centering Coordinate Fold $\implies$ Cubic $Ri$ Degeneracy $\implies$ Loss of Fast Hyperbolicity $\implies$ Saddle-Node (det $J = 0$)}}
+\end{center}
+\textbf{The Four SCM Operational NWP Mandates}:
+\begin{enumerate}
+    \item \textbf{Track A Pre-Diagnostic Smoothing}: Filter primitive velocity/temperature fields ($u,v,\theta_v$) in log-height space before differentiating to prevent $S^{-6}$ variance blowup aloft.
+    \item \textbf{Fast Stability Gating ($\lambda_f$)}: Shut off vertical mixing only if $\lambda_f \ge -\epsilon_\lambda$, preventing coordinate fold illusions ($\zeta_z = 0$) from cutting off fluxes.
+    \item \textbf{Cease Empirical Parameter Tuning}: Do not retune Monin-Obukhov constants ($\beta_m, \beta_h$) to fit profile knees; these are coordinate mapping features.
+    \item \textbf{Enforce $N_z \ge 3$ Vertical Ingestion Gates}: Bypass finite-difference curvature operators ($\mathbf{D}_2$) on sparse grids. Enforce Bulk Richardson fallback:
+    $$Ri_b = \frac{g}{\overline{\theta_v}} \frac{(z_2 - z_1)(\theta_{v,2} - \theta_{v,1})}{(u_2 - u_1)^2 + (v_2 - v_1)^2}$$
+\end{enumerate}
+\end{tcolorbox}
+
+\end{multicols}
+
+\end{document}
