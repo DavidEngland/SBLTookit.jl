@@ -1,4 +1,4 @@
-.PHONY: all instantiate process heatmaps gspt gabls3 paper clean test symlinks help
+.PHONY: all instantiate process heatmaps stability gspt gabls3 paper clean test symlinks help
 
 JULIA = julia --project=.
 PIPELINE = ./run_pipeline.sh
@@ -6,6 +6,7 @@ DATA_SRC = $(abspath ../SpectralBL-Analytics/data)
 LATEXMK = latexmk -pdf -interaction=nonstopmode -halt-on-error
 
 HEATMAP_SCRIPT = scripts/plot_obukhov_heatmaps.jl
+STABILITY_SCRIPT = scripts/plot_stability_heatmaps.jl
 GSPT_SCRIPT = scripts/plot_gspt_transition.jl
 EXPORTS_SCRIPT = scripts/run_campaign_exports.jl
 GABLS3_DRIVER = scripts/gabls3-gspt-driver.jl
@@ -14,7 +15,7 @@ GABLS3_CLIM = scripts/gabls3-gspt-climatology.jl
 MANUSCRIPT_DIR = paper
 MANUSCRIPT_TEX = $(MANUSCRIPT_DIR)/main.tex
 
-all: symlinks instantiate process gabls3 heatmaps gspt paper
+all: symlinks instantiate process gabls3 heatmaps stability gspt paper
 
 symlinks:
 	@mkdir -p data/raw
@@ -47,6 +48,10 @@ gabls3: symlinks
 heatmaps: symlinks
 	@echo "Generating SBLToolkit L(z,t) observational heatmaps..."
 	$(JULIA) $(HEATMAP_SCRIPT)
+
+stability: symlinks
+	@echo "Generating GSPT Track A stability heatmaps (GLGS closures, 200 m grid)..."
+	$(JULIA) $(STABILITY_SCRIPT)
 
 gspt: symlinks
 	@echo "Generating GSPT Phase 2 dynamic (R_coord, t) transition surfaces..."
@@ -83,6 +88,7 @@ help:
 	@echo "  make process      - Execute parallel processing pipeline across datasets"
 	@echo "  make gabls3       - Ingest GABLS3 NetCDF & compile physical GSPT climatology"
 	@echo "  make heatmaps     - Generate L(z,t) observational heatmaps for campaigns"
+	@echo "  make stability    - Generate Track A GLGS stability heatmaps (200 m grid)"
 	@echo "  make gspt         - Generate dynamic GSPT (R_coord, t) transition surfaces"
 	@echo "  make exports      - Run campaign data exports and manifold heatmaps"
 	@echo "  make paper        - Compile LaTeX manuscript (paper/main.tex) to PDF"

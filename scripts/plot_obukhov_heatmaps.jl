@@ -193,7 +193,9 @@ function build_operators(z::Vector{Float64})
         z0 = z[i]
 
         # f(z_j) = f(z0) + f'(z0)(z_j - z0) + 1/2 f''(z0)(z_j - z0)^2
-        A = [ones(3)'; (zi .- z0)'; 0.5 .* (zi .- z0) .^ 2']
+        # NOTE: postfix ' binds tighter than .^, so the exponent must be parenthesized
+        # separately from the outer transpose, else the third row silently stays a column.
+        A = [ones(3)'; (zi .- z0)'; (0.5 .* (zi .- z0) .^ 2)']
 
         w1 = A \ [0.0, 1.0, 0.0] # 1st derivative stencil weights
         w2 = A \ [0.0, 0.0, 1.0] # 2nd derivative stencil weights
@@ -392,7 +394,12 @@ function load_profile_from_nc(nc_path::String, campaign_name::String; g=9.81, th
 
         t_key = match_nc_var(keys_list, ["time", "datetime", "t", "sampleindex"])
         t_key === nothing && error("Missing time dimension in $nc_path.")
-        timestamps = Float64.(vec(ds[t_key][:]))
+        raw_time = vec(ds[t_key][:])
+        timestamps = if eltype(raw_time) <: DateTime
+            Dates.datetime2unix.(raw_time) # DateTime doesn't coerce to Float64 directly
+        else
+            Float64.(raw_time)
+        end
 
         z_key = match_nc_var(keys_list, ["height", "heights", "z", "level", "levels", "depth"])
         raw_z_levels = if z_key !== nothing
