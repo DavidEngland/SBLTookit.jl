@@ -41,3 +41,26 @@ $$Ri_{zz} = \underbrace{R''(\zeta) \zeta_z^2}_{C_{\text{const}}} + \underbrace{R
 
 * **Inflection Masking ($z \approx 10 \text{ m}$)**: Positive coordinate curvature ($C_{\text{coord}} \approx +0.0036 \text{ m}^{-2}$) cancels negative stability curvature ($C_{\text{const}} \approx -0.0040 \text{ m}^{-2}$), hiding active, opposing physical mechanisms behind an apparently linear profile ($Ri_{zz} \approx 0$).
 * **Jet-Nose Fold Illusion ($z \approx 45 \text{ m}$)**: Near Low-Level Jet (LLJ) wind maxima where vertical shear vanishes ($S^2 \to 0$), visual profile knees are driven over 99.4% by coordinate-stretching geometry ($C_{\text{coord}}$) rather than true turbulence collapse.
+
+---
+
+## BLLAST
+
+![BLLAST](./generated/sbltoolkit_heatmaps/bllast_stability_heatmaps.png)
+
+## FLOSS II
+
+![FLOSS II](./generated/sbltoolkit_heatmaps/floss_ii_stability_heatmaps.png)
+![SHEBA](./generated/sbltoolkit_heatmaps/sheba_stability_heatmaps.png)
+
+## CASES-99
+
+![CASES 99](./generated/sbltoolkit_heatmaps/cases_99_stability_heatmaps.png)
+
+## GABLS3
+
+![GABLS3](./generated/sbltoolkit_heatmaps/gabls3_stability_heatmaps.png)
+
+## Code
+
+![CODE](../scripts/plot_stability_heatmaps.jl)
