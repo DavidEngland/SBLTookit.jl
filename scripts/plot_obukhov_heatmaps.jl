@@ -450,7 +450,7 @@ function plot_sbltoolkit_obukhov_panel(data::NamedTuple, campaign_name::String, 
 
     zeta_symlog = @. sign(data.zeta) * log10(1.0 + abs(data.zeta))
     p2 = heatmap(t_axis, z_axis, zeta_symlog;
-        clims=(-1.5, 1.5), color=cg_puor, title="$(campaign_name) — ζ(z,t)", colorbar_title=" sgn(ζ) log₁₀(1+|ζ|)", opts...)
+        clims=(-1.5, 1.5), color=cg_puor, title="$(campaign_name) — ζ(z,t) [Direct]", colorbar_title=" sgn(ζ) log₁₀(1+|ζ|)", opts...)
 
     p3 = heatmap(t_axis, z_axis, clamp.(data.zeta_z, -0.2, 0.2);
         clims=(-0.1, 0.1), color=cg_bwr, title="$(campaign_name) — Jacobian ζ_z", colorbar_title=" ζ_z [m⁻¹]", opts...)
