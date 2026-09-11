@@ -88,9 +88,7 @@ Evaluating these two scripts across campaign archetypes illustrates key resoluti
 
 ![GABLS3](./generated/sbltoolkit_heatmaps/gabls3_obukhov_heatmaps.png)
 
-## Code Reference: Obukhov Heatmaps
-
-![CODE](../scripts/plot_obukhov_heatmaps.jl)
+[CODE](https://github.com/DavidEngland/SBLTookit.jl/blob/main/scripts/plot_obukhov_heatmaps.jl)
 ---
 
 ### Refined Architectural Summary
@@ -138,6 +136,4 @@ $$Ri_{zz} = \underbrace{R''(\zeta) \zeta_z^2}_{C_{\text{const}}} + \underbrace{R
 
 ![GABLS3](./generated/sbltoolkit_heatmaps/gabls3_stability_heatmaps.png)
 
-## Code Reference: Stability Heatmaps
-
-![Code Reference](../scripts/plot_stability_heatmaps.jl)
+[Code Reference](https://github.com/DavidEngland/SBLTookit.jl/blob/main/scripts/plot_stability_heatmaps.jl)
