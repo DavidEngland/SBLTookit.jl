@@ -62,7 +62,7 @@ Executes a 12-hour coupled SEB + 1D vertical diffusion integration.
 function run_seb_simulation(use_cz0hr::Bool, config::SEBModelConfig{T}) where {T<:AbstractFloat}
     # Grid Setup
     z = collect(range(1.5, config.z_max, length=config.Nz))
-    dz = z - z
+    dz = z[2] - z[1]
     g_grav = T(9.81)
     theta_0 = T(285.0)
 
@@ -86,7 +86,7 @@ function run_seb_simulation(use_cz0hr::Bool, config::SEBModelConfig{T}) where {T
 
         # 1. Compute Raw Richardson Profile
         dtheta_dz = zeros(T, config.Nz)
-        dtheta_dz = (theta - Ts) / z
+        dtheta_dz[1] = (theta[1] - Ts) / z[1]
         for i in 2:config.Nz
             dtheta_dz[i] = (theta[i] - theta[i-1]) / dz
         end
@@ -108,7 +108,7 @@ function run_seb_simulation(use_cz0hr::Bool, config::SEBModelConfig{T}) where {T
             for i in 2:(config.Nz-1)
                 d2Ri_dz2[i] = (Ri_raw[i+1] - 2*Ri_raw[i] + Ri_raw[i-1]) / (dz^2)
             end
-            d2Ri_dz2 = d2Ri_dz2
+            d2Ri_dz2[1] = d2Ri_dz2[2]
             d2Ri_dz2[end] = d2Ri_dz2[end-1]
 
             for i in 1:config.Nz
@@ -126,23 +126,24 @@ function run_seb_simulation(use_cz0hr::Bool, config::SEBModelConfig{T}) where {T
         end
 
         # 3. SEB Backward-Euler Update for Ts
-        gamma_coupling = config.rho_cp * Kh / z
+        Kh1 = Kh[1]
+        gamma_coupling = config.rho_cp * Kh1 / z[1]
         beta_denom = (config.Cs / config.dt) + gamma_coupling + config.Ks
 
-        Ts_next = ( (config.Cs / config.dt) * Ts + config.Rn0 + gamma_coupling * theta + config.Ks * config.T_deep ) / beta_denom
+        Ts_next = ( (config.Cs / config.dt) * Ts + config.Rn0 + gamma_coupling * theta[1] + config.Ks * config.T_deep ) / beta_denom
         Ts = Ts_next
 
         # Downward Sensible Heat Flux H0 [W/m²]
-        H0 = -config.rho_cp * Kh * (theta - Ts) / z
+        H0 = -config.rho_cp * Kh1 * (theta[1] - Ts) / z[1]
 
         # 4. Implicit 1D Vertical Column Diffusion for Potential Temperature
         A_tri .= zero(T)
 
         # Boundary level 1 (coupled to Ts)
-        r_1 = Kh * config.dt / (dz * z)
-        A_tri = one(T) + r_1
-        A_tri = -r_1
-        b_rhs = theta + (config.dt / (config.rho_cp * z)) * (config.rho_cp * Kh * Ts / z)
+        r_1 = Kh1 * config.dt / (dz * z[1])
+        A_tri[1, 1] = one(T) + r_1
+        A_tri[1, 2] = -r_1
+        b_rhs[1] = theta[1] + (config.dt / (config.rho_cp * z[1])) * (config.rho_cp * Kh1 * Ts / z[1])
 
         # Interior levels
         for i in 2:(config.Nz-1)
@@ -164,7 +165,7 @@ function run_seb_simulation(use_cz0hr::Bool, config::SEBModelConfig{T}) where {T
         # Log Metrics
         Ts_history[n] = Ts
         H0_history[n] = H0
-        Kh_level1[n]  = Kh
+        Kh_level1[n]  = Kh1
     end
 
     return time_hrs, Ts_history, H0_history, Kh_level1

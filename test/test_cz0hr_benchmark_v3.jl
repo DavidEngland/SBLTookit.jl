@@ -98,7 +98,7 @@ function plot_cz0hr_diagnostics(z, Ri_raw, Ri_reg, Km_raw, Km_reg_Cinf)
     plot!(p2, Km_reg_Cinf, z, label="Km (C^∞ Soft-Plus)", lw=2)
     
     full_plot = plot(p1, p2, layout=(1, 2), size=(900, 450), margin=5Plots.mm)
-    savefig(full_plot, "/workspace/scratch/cz0hr_llj_benchmark_v3.png")
+    savefig(full_plot, "./workspace/scratch/cz0hr_llj_benchmark_v3.png")
     return full_plot
 end
 

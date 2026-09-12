@@ -169,7 +169,7 @@ function run_polar_seb_simulation(
             latent_freeze_cap = (config.w_water * config.Lf / (sqrt(T(2*pi)) * config.sigma_T)) *
                                 exp(-T(0.5) * ((Ts - config.T_m) / config.sigma_T)^2)
             Cs_eff = config.Cs_base + latent_freeze_cap
-        else:
+        else
             Cs_eff = config.Cs_base
         end
         Cs_eff_history[n] = Cs_eff
